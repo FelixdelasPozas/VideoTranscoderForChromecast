@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="/MusicTranscoder">
+    <file>application.ico</file>
+    <file>process.ico</file>
+    <file>folder.ico</file>
+	<file>settings.ico</file>
+	<file>libav.ico</file>
+	<file>qt.ico</file>
+	<file>clipboard.ico</file>
+	<file>webm.ico</file>
+  </qresource>
+</RCC>
