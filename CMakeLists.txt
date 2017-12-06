@@ -74,6 +74,7 @@ set (CORE_SOURCES
   VideoTranscoder.cpp
   AboutDialog.cpp
   Utils.cpp
+  ConfigurationDialog.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES(${CORE_SOURCES} PROPERTIES OBJECT_DEPENDS "${CORE_UI}")

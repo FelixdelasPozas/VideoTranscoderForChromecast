@@ -37,7 +37,7 @@ const QString Utils::TranscoderConfiguration::VIDEO_CODEC       = QObject::tr("V
 const QString Utils::TranscoderConfiguration::VIDEO_BITRATE     = QObject::tr("Video bitrate");
 const QString Utils::TranscoderConfiguration::AUDIO_CODEC       = QObject::tr("Audio codec");
 const QString Utils::TranscoderConfiguration::AUDIO_BITRATE     = QObject::tr("Audio bitrate");
-
+const QString Utils::TranscoderConfiguration::EMBED_SUBTITLES   = QObject::tr("Embed subtitles");
 
 //-----------------------------------------------------------------
 bool Utils::isVideoFile(const QFileInfo &file)
@@ -91,6 +91,7 @@ Utils::TranscoderConfiguration::TranscoderConfiguration()
 , m_videoBitrate                  {1000}
 , m_audioCodec                    {AudioCodec::VORBIS}
 , m_audioBitrate                  {128}
+, m_embedSubtitles                {true}
 {
 }
 
@@ -105,6 +106,7 @@ void Utils::TranscoderConfiguration::load()
   m_videoBitrate      = settings.value(VIDEO_BITRATE, 0).toInt();
   m_audioCodec        = static_cast<AudioCodec>(settings.value(AUDIO_CODEC, 0).toInt());
   m_audioBitrate      = settings.value(AUDIO_BITRATE, 0).toInt();
+  m_embedSubtitles    = settings.value(EMBED_SUBTITLES, true).toBool();
 
   // go to parent or home if the saved directory no longer exists.
   m_root_directory = validDirectoryCheck(m_root_directory);
@@ -122,6 +124,7 @@ void Utils::TranscoderConfiguration::save() const
   settings.setValue(VIDEO_BITRATE, m_videoBitrate);
   settings.setValue(AUDIO_CODEC, static_cast<int>(m_audioCodec));
   settings.setValue(AUDIO_BITRATE, m_audioBitrate);
+  settings.setValue(EMBED_SUBTITLES, m_embedSubtitles);
 
   settings.sync();
 }
@@ -199,10 +202,26 @@ void Utils::TranscoderConfiguration::setAudioBitrate(const int bitrate)
 }
 
 //-----------------------------------------------------------------
+const bool Utils::TranscoderConfiguration::embedSubtitles() const
+{
+  return m_embedSubtitles;
+}
+
+//-----------------------------------------------------------------
+void Utils::TranscoderConfiguration::setEmbedSubtitles(const bool value)
+{
+  m_embedSubtitles = value;
+}
+
+//-----------------------------------------------------------------
 const bool Utils::TranscoderConfiguration::isValid() const
 {
-  // TODO
-  return false;
+  return (m_videoCodec == VideoCodec::VP8 && m_audioCodec == AudioCodec::VORBIS) ||
+         (m_videoCodec == VideoCodec::VP9 && m_audioCodec == AudioCodec::VORBIS) ||
+         (m_videoCodec == VideoCodec::H264 && m_audioCodec == AudioCodec::MP3) ||
+         (m_videoCodec == VideoCodec::H265 && m_audioCodec == AudioCodec::MP3) ||
+         (m_videoCodec == VideoCodec::H264 && m_audioCodec == AudioCodec::AAC) ||
+         (m_videoCodec == VideoCodec::H265 && m_audioCodec == AudioCodec::AAC);
 }
 
 //-----------------------------------------------------------------

@@ -20,6 +20,7 @@
 // Project
 #include <VideoTranscoder.h>
 #include <AboutDialog.h>
+#include <ConfigurationDialog.h>
 #include <Utils.h>
 
 // Qt
@@ -40,11 +41,12 @@ VideoTranscoder::VideoTranscoder()
 {
   setupUi(this);
 
-  m_threads->setMaximum(std::thread::hardware_concurrency());
-
   connectUI();
 
   m_configuration.load();
+
+  m_threads->setValue(m_configuration.numberOfThreads());
+  m_directoryText->setText(m_configuration.rootDirectory());
 }
 
 //--------------------------------------------------------------------
@@ -80,6 +82,8 @@ void VideoTranscoder::onAboutButtonPressed()
 //--------------------------------------------------------------------
 void VideoTranscoder::onConfigurationButtonPressed()
 {
+  ConfigurationDialog dialog{m_configuration, this};
+  dialog.exec();
 }
 
 //--------------------------------------------------------------------

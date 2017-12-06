@@ -155,18 +155,31 @@ namespace Utils
        */
       void setAudioBitrate(const int bitrate);
 
+      /** \brief Returns the value of 'embed subtitles in video' value.
+       *
+       */
+      const bool embedSubtitles() const;
+
+      /** \brief Sets the value of the 'embed subtitles in video'.
+       * \param[in] value boolean value.
+       *
+       */
+      void setEmbedSubtitles(const bool value);
+
       /** \brief Returns true if the video and audio codec pair is valid.
        *
        */
       const bool isValid() const;
 
     private:
-      QString    m_root_directory;    /** last used directory.      */
-      int        m_number_of_threads; /** number of threads to use. */
-      VideoCodec m_videoCodec;        /** output video codec.       */
-      int        m_videoBitrate;      /** output video bitrate.     */
-      AudioCodec m_audioCodec;        /** output audio codec.       */
-      int        m_audioBitrate;      /** output audio bitrate.     */
+      QString    m_root_directory;    /** last used directory.                                                */
+      int        m_number_of_threads; /** number of threads to use.                                           */
+      VideoCodec m_videoCodec;        /** output video codec.                                                 */
+      int        m_videoBitrate;      /** output video bitrate.                                               */
+      AudioCodec m_audioCodec;        /** output audio codec.                                                 */
+      int        m_audioBitrate;      /** output audio bitrate.                                               */
+      bool       m_embedSubtitles;    /** true if subtitles are to be embedded in the video, false otherwise. */
+
 
       /** settings key strings. */
       static const QString ROOT_DIRECTORY;
@@ -175,6 +188,7 @@ namespace Utils
       static const QString VIDEO_BITRATE;
       static const QString AUDIO_CODEC;
       static const QString AUDIO_BITRATE;
+      static const QString EMBED_SUBTITLES;
   };
 }
 
