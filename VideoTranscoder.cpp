@@ -20,12 +20,14 @@
 // Project
 #include <VideoTranscoder.h>
 #include <AboutDialog.h>
+#include <Utils.h>
 
 // Qt
 #include <QKeyEvent>
 #include <QEvent>
 #include <QSettings>
 #include <QDir>
+#include <QFileDialog>
 
 // C++
 #include <thread>
@@ -42,13 +44,13 @@ VideoTranscoder::VideoTranscoder()
 
   connectUI();
 
-  loadConfiguration();
+  m_configuration.load();
 }
 
 //--------------------------------------------------------------------
 VideoTranscoder::~VideoTranscoder()
 {
-  saveConfiguration();
+  m_configuration.save();
 }
 
 //--------------------------------------------------------------------
@@ -91,25 +93,25 @@ void VideoTranscoder::connectUI()
   connect(m_aboutButton, SIGNAL(pressed()), this, SLOT(onAboutButtonPressed()));
   connect(m_configButton, SIGNAL(pressed()), this, SLOT(onConfigurationButtonPressed()));
   connect(m_startButton, SIGNAL(pressed()), this, SLOT(onStartButtonPressed()));
+  connect(m_directoryButton, SIGNAL(pressed()), this, SLOT(onDirectoryButtonPressed()));
 }
 
 //--------------------------------------------------------------------
-void VideoTranscoder::loadConfiguration()
+void VideoTranscoder::onDirectoryButtonPressed()
 {
-  QSettings settings("Felix de las Pozas Alvarez", "Video Transcoder");
-  auto outputDir = settings.value(OUTPUT_DIRECTORY, QDir::homePath()).toString();
-  auto numThreads = settings.value(PROCESSORS_NUMBER, m_threads->value()).toInt();
+  QFileDialog fileBrowser;
+  fileBrowser.setDirectory(Utils::validDirectoryCheck(m_directoryText->text()));
+  fileBrowser.setWindowTitle("Select root directory");
+  fileBrowser.setFileMode(QFileDialog::Directory);
+  fileBrowser.setOption(QFileDialog::DontUseNativeDialog, false);
+  fileBrowser.setOption(QFileDialog::ShowDirsOnly);
+  fileBrowser.setViewMode(QFileDialog::List);
+  fileBrowser.setWindowIcon(QIcon(":/MusicTranscoder/folder.ico"));
 
-  m_directoryText->setText(QDir::toNativeSeparators(outputDir));
-  m_threads->setValue(numThreads);
-}
-
-//--------------------------------------------------------------------
-void VideoTranscoder::saveConfiguration()
-{
-  QSettings settings("Felix de las Pozas Alvarez", "Video Transcoder");
-  settings.setValue(OUTPUT_DIRECTORY, m_directoryText->text());
-  settings.setValue(PROCESSORS_NUMBER, m_threads->value());
-
-  settings.sync();
+  if(fileBrowser.exec() == QDialog::Accepted)
+  {
+    auto newDirectory = QDir::toNativeSeparators(fileBrowser.selectedFiles().first());
+    m_configuration.setRootDirectory(newDirectory);
+    m_directoryText->setText(newDirectory);
+  }
 }

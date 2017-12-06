@@ -22,6 +22,7 @@
 
 // Project
 #include <ui_VideoTranscoder.h>
+#include <Utils.h>
 
 // Qt
 #include <QMainWindow>
@@ -67,21 +68,18 @@ class VideoTranscoder
      */
     void onStartButtonPressed();
 
+    /** \brief Displays the directory selection dialog and updates the text line if valid.
+     *
+     */
+    void onDirectoryButtonPressed();
+
   private:
     /** \brief Connects the buttons signals to its slots.
      *
      */
     void connectUI();
 
-    /** \brief Loads the application configuration from the registry.
-     *
-     */
-    void loadConfiguration();
-
-    /** \brief Saves the application configuration to the registry.
-     *
-     */
-    void saveConfiguration();
+    Utils::TranscoderConfiguration m_configuration; /** application configuration. */
 };
 
 #endif // VIDEOTRANSCODER_H_
