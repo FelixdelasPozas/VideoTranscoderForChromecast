@@ -1,6 +1,6 @@
 /*
  File: AboutDialog.cpp
- Created on: 1/12/2017
+ Created on: 01/12/2017
  Author: Felix de las Pozas Alvarez
 
  This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,10 @@
 // Project
 #include <AboutDialog.h>
 
+// Qt
+#include <QEvent>
+#include <QKeyEvent>
+
 const QString AboutDialog::VERSION = QString("version 1.0.0");
 
 //-----------------------------------------------------------------
@@ -37,3 +41,19 @@ AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
   m_version->setText(VERSION);
 }
 
+//--------------------------------------------------------------------
+bool AboutDialog::event(QEvent* e)
+{
+  if(e->type() == QEvent::KeyPress)
+  {
+    auto ke = dynamic_cast<QKeyEvent *>(e);
+    if(ke && ke->key() == Qt::Key_Escape)
+    {
+      e->accept();
+      close();
+      return true;
+    }
+  }
+
+  return QDialog::event(e);
+}

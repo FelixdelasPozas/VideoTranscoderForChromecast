@@ -1,6 +1,6 @@
 /*
  File: AboutDialog.h
- Created on: 1/12/2017
+ Created on: 01/12/2017
  Author: Felix de las Pozas Alvarez
 
  This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,13 @@
 #ifndef ABOUTDIALOG_H_
 #define ABOUTDIALOG_H_
 
-#include <QDialog>
+// Project
 #include "ui_AboutDialog.h"
+
+// Qt
+#include <QDialog>
+
+class QEvent;
 
 /** \class AboutDialog
  * \brief Implements the narcissitic dialog.
@@ -45,6 +50,9 @@ class AboutDialog
      */
     virtual ~AboutDialog()
     {}
+
+  protected:
+    bool event(QEvent *e) override;
 
   private:
     static const QString VERSION; /** application version string. */
