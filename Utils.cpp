@@ -29,7 +29,6 @@
 #include <thread>
 
 const QStringList Utils::MOVIE_FILE_EXTENSIONS   = {"*.mp4", "*.avi", "*.ogv", "*.webm", "*.mkv", "*.mpg", "*.mpeg" };
-const QString     Utils::TEMPORAL_FILE_EXTENSION = QString(".VideoTranscoderTemporal");
 
 const QString Utils::TranscoderConfiguration::ROOT_DIRECTORY    = QObject::tr("Root directory");
 const QString Utils::TranscoderConfiguration::NUMBER_OF_THREADS = QObject::tr("Number of threads");
@@ -53,7 +52,7 @@ QList<QFileInfo> Utils::findFiles(const QDir initialDir,
                                   bool with_subdirectories,
                                   const std::function<bool (const QFileInfo &)> &condition)
 {
-  QList<QFileInfo> otherFilesFound, videoFilesFound;
+  QList<QFileInfo> videoFilesFound;
 
   auto startingDir = initialDir;
   startingDir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDot | QDir::NoDotDot);
@@ -67,21 +66,13 @@ QList<QFileInfo> Utils::findFiles(const QDir initialDir,
 
     auto info = it.fileInfo();
 
-    if(!condition(info)) continue;
-
-    auto extension = info.absoluteFilePath().split('.').last().toLower();
-
-    if (isVideoFile(info))
+    if(condition(info)) continue;
     {
       videoFilesFound << info;
     }
-    else
-    {
-      otherFilesFound << info;
-    }
   }
 
-  return videoFilesFound + otherFilesFound;
+  return videoFilesFound;
 }
 
 //-----------------------------------------------------------------

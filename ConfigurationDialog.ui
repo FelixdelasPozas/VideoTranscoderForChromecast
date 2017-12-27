@@ -27,7 +27,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="rsc/resources.qrc">
-    <normaloff>:/MusicTranscoder/settings.ico</normaloff>:/MusicTranscoder/settings.ico</iconset>
+    <normaloff>:/VideoTranscoder/settings.ico</normaloff>:/VideoTranscoder/settings.ico</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>

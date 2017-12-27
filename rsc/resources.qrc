@@ -1,5 +1,5 @@
 <RCC>
-  <qresource prefix="/MusicTranscoder">
+  <qresource prefix="/VideoTranscoder">
     <file>application.ico</file>
     <file>process.ico</file>
     <file>folder.ico</file>

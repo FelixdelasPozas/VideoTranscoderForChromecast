@@ -21,6 +21,7 @@
 #include <VideoTranscoder.h>
 #include <AboutDialog.h>
 #include <ConfigurationDialog.h>
+#include <ProcessDialog.h>
 #include <Utils.h>
 
 // Qt
@@ -29,6 +30,7 @@
 #include <QSettings>
 #include <QDir>
 #include <QFileDialog>
+#include <QMessageBox>
 
 // C++
 #include <thread>
@@ -89,6 +91,27 @@ void VideoTranscoder::onConfigurationButtonPressed()
 //--------------------------------------------------------------------
 void VideoTranscoder::onStartButtonPressed()
 {
+  auto files = Utils::findFiles(m_directoryText->text(), Utils::MOVIE_FILE_EXTENSIONS);
+
+  if(!files.isEmpty())
+  {
+    hide();
+
+    ProcessDialog dialog{files, m_configuration, this};
+    dialog.exec();
+
+    show();
+  }
+  else
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Can't find any file in the specified folder that can be processed.");
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowIcon(QIcon(":/VideoTranscoder/application.ico"));
+    msgBox.setWindowTitle(QObject::tr("Unable to start the conversion process"));
+    msgBox.exec();
+  }
 }
 
 //--------------------------------------------------------------------

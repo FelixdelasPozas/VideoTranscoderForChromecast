@@ -1,5 +1,5 @@
-Music Transcoder To MP3
-=======================
+Video Transcoder For Chromecast
+===============================
 
 # Summary
 - [Description](#description)
@@ -9,7 +9,9 @@ Music Transcoder To MP3
 - [Repository information](#repository-information)
 
 # Description
-Music Transcoder To MP3 is a cross-platform tool to transcode music files from multiple formats (music files, audio track of video files and module files) to MP3 format. 
+Simple transcoder program to transcode video files to formats supported by Chromescast devices.  
+
+** TODO **
 
 ## Options
 The tool can be configured:

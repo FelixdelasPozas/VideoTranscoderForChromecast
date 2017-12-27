@@ -27,7 +27,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="rsc/resources.qrc">
-    <normaloff>:/MusicTranscoder/application.ico</normaloff>:/MusicTranscoder/application.ico</iconset>
+    <normaloff>:/VideoTranscoder/application.ico</normaloff>:/VideoTranscoder/application.ico</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -59,7 +59,7 @@
           <string/>
          </property>
          <property name="pixmap">
-          <pixmap resource="rsc/resources.qrc">:/MusicTranscoder/application.ico</pixmap>
+          <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/application.ico</pixmap>
          </property>
          <property name="scaledContents">
           <bool>true</bool>
@@ -228,7 +228,7 @@ QGroupBox::title {
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap resource="rsc/resources.qrc">:/MusicTranscoder/libav.ico</pixmap>
+             <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/libav.ico</pixmap>
             </property>
             <property name="scaledContents">
              <bool>true</bool>
@@ -314,7 +314,7 @@ Open source audio &amp; video processing tools</string>
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap resource="rsc/resources.qrc">:/MusicTranscoder/webm.ico</pixmap>
+             <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/webm.ico</pixmap>
             </property>
             <property name="scaledContents">
              <bool>true</bool>
@@ -391,7 +391,7 @@ WebM Project VPx codec implementation</string>
              <string/>
             </property>
             <property name="pixmap">
-             <pixmap resource="rsc/resources.qrc">:/MusicTranscoder/qt.ico</pixmap>
+             <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/qt.ico</pixmap>
             </property>
             <property name="scaledContents">
              <bool>true</bool>

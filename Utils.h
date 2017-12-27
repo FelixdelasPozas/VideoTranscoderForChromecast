@@ -32,7 +32,6 @@
 namespace Utils
 {
   extern const QStringList MOVIE_FILE_EXTENSIONS;
-  extern const QString TEMPORAL_FILE_EXTENSION;
   static QMutex s_mutex;
 
   /** \brief Returns true if the file given as parameter has a video extension.
@@ -63,7 +62,7 @@ namespace Utils
   QList<QFileInfo> findFiles(const QDir rootDirectory,
                              const QStringList extensions,
                              bool with_subdirectories = true,
-                             const std::function<bool (const QFileInfo &)> &condition = [](const QFileInfo &info) { return true; });
+                             const std::function<bool (const QFileInfo &)> &condition = Utils::isVideoFile);
 
   /** \class TranscoderConfiguration
    * \brief Implements the configuration storage/management.

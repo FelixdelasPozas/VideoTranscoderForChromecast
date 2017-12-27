@@ -75,6 +75,12 @@ set (CORE_SOURCES
   AboutDialog.cpp
   Utils.cpp
   ConfigurationDialog.cpp
+  ProcessDialog.cpp
+  Worker.cpp
+  Workers/VP8Worker.cpp
+  Workers/VP9Worker.cpp
+  Workers/H264Worker.cpp
+  Workers/H265Worker.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES(${CORE_SOURCES} PROPERTIES OBJECT_DEPENDS "${CORE_UI}")
