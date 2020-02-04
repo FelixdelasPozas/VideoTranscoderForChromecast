@@ -6,20 +6,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
-    <height>152</height>
+    <width>527</width>
+    <height>293</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>362</width>
-    <height>152</height>
+    <width>527</width>
+    <height>293</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>362</width>
-    <height>152</height>
+    <width>527</width>
+    <height>293</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -31,74 +31,198 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
-     <item row="0" column="1">
-      <widget class="QComboBox" name="m_videoCodec">
-       <item>
-        <property name="text">
-         <string>VP8</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>VP9</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>H.264</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>H.265</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Output Video codec</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Output Audio codec</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="m_audioCodec">
-       <item>
-        <property name="text">
-         <string>Vorbis</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>MP3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>AAC</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="styleSheet">
+      <string notr="true">QGroupBox {
+    border: 1px solid gray;
+    margin-top: 2ex; /* leave space at the top for the title */
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+}</string>
+     </property>
+     <property name="title">
+      <string>Output file</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1">
+        <item row="0" column="1">
+         <widget class="QComboBox" name="m_videoCodec">
+          <item>
+           <property name="text">
+            <string>VP8</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>VP9</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>H.264</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>H.265</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Output video codec</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Output audio codec</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="m_audioCodec">
+          <item>
+           <property name="text">
+            <string>Vorbis</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>MP3</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>AAC</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Output audio channels</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="m_audioChannels">
+          <property name="buttonSymbols">
+           <enum>QAbstractSpinBox::PlusMinus</enum>
+          </property>
+          <property name="suffix">
+           <string> channels</string>
+          </property>
+          <property name="minimum">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <number>7</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Audio language</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="m_audioLanguage">
+          <item>
+           <property name="text">
+            <string>Default (First item)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>English</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Spanish</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QCheckBox" name="m_embedSubtitles">
-     <property name="text">
-      <string>Embed subtitles in the video if found</string>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="styleSheet">
+      <string notr="true">QGroupBox {
+    border: 1px solid gray;
+    margin-top: 2ex; /* leave space at the top for the title */
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 3px;
+}</string>
      </property>
-     <property name="checked">
-      <bool>true</bool>
+     <property name="title">
+      <string>Subtitles</string>
      </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QCheckBox" name="m_extractSubtitles">
+        <property name="text">
+         <string>Extract subtitles to separate file if present.</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1">
+        <item>
+         <widget class="QLabel" name="label_4">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Subtitle language</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="m_subtitleLanguage">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <item>
+           <property name="text">
+            <string>Default (First item)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>English</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Spanish</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -110,7 +234,10 @@
       </font>
      </property>
      <property name="text">
-      <string>Video and audio bitrates values will be determined by the values of the input video to be transcoded.</string>
+      <string>Output video and audio bitrates values will be determined by the values of the input video to be transcoded. The number of output audio tracks depends on the number of tracks present in the input video. The preferred language is used when the file has multiple audio tracks or subtitles.</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignJustify|Qt::AlignVCenter</set>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -122,6 +249,12 @@
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="maximumSize">
+      <size>
+       <width>509</width>
+       <height>23</height>
+      </size>
+     </property>
      <property name="locale">
       <locale language="English" country="UnitedStates"/>
      </property>
@@ -171,6 +304,38 @@
     <hint type="destinationlabel">
      <x>286</x>
      <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_extractSubtitles</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>m_subtitleLanguage</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>263</x>
+     <y>163</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>307</x>
+     <y>188</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_extractSubtitles</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_4</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>263</x>
+     <y>163</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>61</x>
+     <y>188</y>
     </hint>
    </hints>
   </connection>

@@ -47,8 +47,11 @@ VideoTranscoder::VideoTranscoder()
 
   m_configuration.load();
 
+  m_threads->setMinimum(1);
+  m_threads->setMaximum(std::thread::hardware_concurrency());
   m_threads->setValue(m_configuration.numberOfThreads());
   m_directoryText->setText(m_configuration.rootDirectory());
+  m_directoryButton->setCheckable(false);
 }
 
 //--------------------------------------------------------------------
@@ -97,7 +100,7 @@ void VideoTranscoder::onStartButtonPressed()
   {
     hide();
 
-    ProcessDialog dialog{files, m_configuration, this};
+    ProcessDialog dialog{files, m_configuration}; // using 'this' as parent makes the dialog not appear, WTF?
     dialog.exec();
 
     show();
@@ -105,7 +108,7 @@ void VideoTranscoder::onStartButtonPressed()
   else
   {
     QMessageBox msgBox;
-    msgBox.setText("Can't find any file in the specified folder that can be processed.");
+    msgBox.setText("Can't find any video file in the specified folder that can be processed.");
     msgBox.setStandardButtons(QMessageBox::Ok);
     msgBox.setIcon(QMessageBox::Information);
     msgBox.setWindowIcon(QIcon(":/VideoTranscoder/application.ico"));
@@ -117,18 +120,16 @@ void VideoTranscoder::onStartButtonPressed()
 //--------------------------------------------------------------------
 void VideoTranscoder::connectUI()
 {
-  connect(m_aboutButton, SIGNAL(pressed()), this, SLOT(onAboutButtonPressed()));
-  connect(m_configButton, SIGNAL(pressed()), this, SLOT(onConfigurationButtonPressed()));
-  connect(m_startButton, SIGNAL(pressed()), this, SLOT(onStartButtonPressed()));
+  connect(m_aboutButton,     SIGNAL(pressed()), this, SLOT(onAboutButtonPressed()));
+  connect(m_configButton,    SIGNAL(pressed()), this, SLOT(onConfigurationButtonPressed()));
+  connect(m_startButton,     SIGNAL(pressed()), this, SLOT(onStartButtonPressed()));
   connect(m_directoryButton, SIGNAL(pressed()), this, SLOT(onDirectoryButtonPressed()));
 }
 
 //--------------------------------------------------------------------
 void VideoTranscoder::onDirectoryButtonPressed()
 {
-  QFileDialog fileBrowser;
-  fileBrowser.setDirectory(Utils::validDirectoryCheck(m_directoryText->text()));
-  fileBrowser.setWindowTitle("Select root directory");
+  QFileDialog fileBrowser{this, tr("Select root directory"), Utils::validDirectoryCheck(m_directoryText->text())};
   fileBrowser.setFileMode(QFileDialog::Directory);
   fileBrowser.setOption(QFileDialog::DontUseNativeDialog, false);
   fileBrowser.setOption(QFileDialog::ShowDirsOnly);
@@ -138,7 +139,23 @@ void VideoTranscoder::onDirectoryButtonPressed()
   if(fileBrowser.exec() == QDialog::Accepted)
   {
     auto newDirectory = QDir::toNativeSeparators(fileBrowser.selectedFiles().first());
-    m_configuration.setRootDirectory(newDirectory);
-    m_directoryText->setText(newDirectory);
+    QDir directory{newDirectory};
+    if(directory.isReadable())
+    {
+      m_configuration.setRootDirectory(newDirectory);
+      m_directoryText->setText(newDirectory);
+    }
+    else
+    {
+      QMessageBox msgBox;
+      msgBox.setText(tr("Can't read the specified directory\n'%1'.").arg(newDirectory));
+      msgBox.setStandardButtons(QMessageBox::Ok);
+      msgBox.setIcon(QMessageBox::Warning);
+      msgBox.setWindowIcon(QIcon(":/VideoTranscoder/application.ico"));
+      msgBox.setWindowTitle(QObject::tr("Invalid directory"));
+      msgBox.exec();
+    }
   }
+
+  m_directoryButton->setDown(false);
 }

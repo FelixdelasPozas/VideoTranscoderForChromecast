@@ -20,15 +20,24 @@
 // Project
 #include <Workers/H265Worker.h>
 
+// Qt
+#include <QDebug>
+
 //--------------------------------------------------------------------
-H265Worker::H265Worker(const QFileInfo& sourceInfo, const int videoBitrate, const int audioBitrate)
-: Worker{sourceInfo, videoBitrate, audioBitrate}
+H265Worker::H265Worker(const QFileInfo& sourceInfo, const Utils::TranscoderConfiguration &config)
+: Worker(sourceInfo, config)
 {
 }
 
 //--------------------------------------------------------------------
 void H265Worker::run_implementation()
 {
+  QThread::sleep(2);
+  emit progress(0);
+  qDebug() << "audio decoder" << QString::fromLatin1(m_audio_decoder->long_name) << "(" << m_audio_decoder->id << ")";
+  emit progress(50);
+  qDebug() << "video decoder" << QString::fromLatin1(m_video_decoder->long_name) << "(" << m_video_decoder->id << ")";
+  QThread::sleep(2);
 }
 
 //--------------------------------------------------------------------

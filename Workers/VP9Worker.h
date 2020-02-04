@@ -33,11 +33,10 @@ class VP9Worker
   public:
     /** \brief VP9Worker class constructor.ç
      * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] videoBitrate Output video bitrate.
-     * \param[in] audioBitrate Output audio bitrate.
+     * \param[in] config Configuration struct reference.
      *
      */
-    explicit VP9Worker(const QFileInfo &sourceInfo, const int videoBitrate, const int audioBitrate);
+    explicit VP9Worker(const QFileInfo &sourceInfo, const Utils::TranscoderConfiguration &config);
 
     /** \brief VP9Worker class virtual destructor.
      *

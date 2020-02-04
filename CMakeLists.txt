@@ -27,7 +27,7 @@ if(DEFINED MINGW)
   enable_language(RC)
 endif(DEFINED MINGW)
 
-# libav library
+# libav library needs to be compiled with nvenc (Nvidia encoder) and VPX (VP8 & VP9 encoders) support. Check libav compilation options.
 set(LIBAV_DIR "D:/Desarrollo/Bibliotecas/libav-12")
 set(LIBAV_INCLUDE_DIR ${LIBAV_DIR})
 set(LIBAV_LIBRARIES   ${LIBAV_DIR}/libavformat/libavformat.a 
@@ -39,6 +39,10 @@ set(LIBAV_LIBRARIES   ${LIBAV_DIR}/libavformat/libavformat.a
 set(LIBVPX_INCLUDE_DIR "D:/Desarrollo/Bibliotecas/libvpx")
 set(LIBVPX_LIBRARY ${LIBVPX_INCLUDE_DIR}/libvpx.a)
 
+# zlib
+set(ZLIB_INCLUDE_DIR "D:/Desarrollo/Bibliotecas/zlib-1.2.11")
+set(ZLIB_LIBRARY "D:/Desarrollo/Bibliotecas/zlib-build/libzlibstatic.a")
+
 include_directories(
   ${CMAKE_SOURCE_DIR}
   ${PROJECT_BINARY_DIR}
@@ -47,6 +51,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}  # For wrap/ui files
   ${LIBAV_INCLUDE_DIR}
   ${LIBVPX_INCLUDE_DIR}
+  ${ZLIB_INCLUDE_DIR}
   )
 
 set(CMAKE_CXX_FLAGS " -Wall -Wno-deprecated -std=c++11 -mwindows -m64")
@@ -89,8 +94,14 @@ set(CORE_EXTERNAL_LIBS
   ${QT_LIBRARIES}
   ${LIBAV_LIBRARIES}
   ${LIBVPX_LIBRARY}
+  ${ZLIB_LIBRARY}
+  libws2_32.a
 )
   
 add_executable(VideoTranscoder ${CORE_SOURCES})
 target_link_libraries (VideoTranscoder ${CORE_EXTERNAL_LIBS})
 qt5_use_modules(VideoTranscoder Widgets)
+
+add_custom_target(buildNumberDependency
+                  COMMAND ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/buildnumber.cmake")
+add_dependencies(VideoTranscoder buildNumberDependency)

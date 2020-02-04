@@ -33,11 +33,10 @@ class VP8Worker
   public:
     /** \brief VP8Woker class constructor
      * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] videoBitrate Output video bitrate.
-     * \param[in] audioBitrate Output audio bitrate.
+     * \param[in] config Configuration struct reference.
      *
      */
-    explicit VP8Worker(const QFileInfo &sourceInfo, const int videoBitrate, const int audioBitrate);
+    explicit VP8Worker(const QFileInfo &sourceInfo, const Utils::TranscoderConfiguration &config);
 
     /** \brief VP8Woker class virtual destructor.
      *

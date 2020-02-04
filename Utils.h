@@ -71,8 +71,9 @@ namespace Utils
   class TranscoderConfiguration
   {
     public:
-      enum class VideoCodec { VP8 = 0, VP9, H264, H265 }; /** video codec identifiers. */
-      enum class AudioCodec { VORBIS = 0, MP3, AAC };     /** audio codec identifiers. */
+      enum class VideoCodec { VP8 = 0, VP9, H264, H265 };      /** video codec identifiers. */
+      enum class AudioCodec { VORBIS = 0, MP3, AAC };          /** audio codec identifiers. */
+      enum class Language   { DEFAULT = 0, ENGLISH, SPANISH }; /** language identifiers. */
 
       /** \brief TranscoderConfiguration class constructor.
        *
@@ -154,31 +155,66 @@ namespace Utils
        */
       void setAudioBitrate(const int bitrate);
 
-      /** \brief Returns the value of 'embed subtitles in video' value.
+      /** \brief Returns the number of audio channels in the output file.
        *
        */
-      const bool embedSubtitles() const;
+      const int audioChannelsNum() const;
 
-      /** \brief Sets the value of the 'embed subtitles in video'.
-       * \param[in] value boolean value.
+      /** \brief Sets the output file number of audio channels.
+       * \param[in] channelsNum Number of channels [2,7].
        *
        */
-      void setEmbedSubtitles(const bool value);
+      void setAudioNumberOfChannels(const int channelsNum);
 
       /** \brief Returns true if the video and audio codec pair is valid.
        *
        */
       const bool isValid() const;
 
-    private:
-      QString    m_root_directory;    /** last used directory.                                                */
-      int        m_number_of_threads; /** number of threads to use.                                           */
-      VideoCodec m_videoCodec;        /** output video codec.                                                 */
-      int        m_videoBitrate;      /** output video bitrate.                                               */
-      AudioCodec m_audioCodec;        /** output audio codec.                                                 */
-      int        m_audioBitrate;      /** output audio bitrate.                                               */
-      bool       m_embedSubtitles;    /** true if subtitles are to be embedded in the video, false otherwise. */
+      /** \brief Sets the preferred language for audio transcoding.
+       * \param[in] language Language identifier.
+       *
+       */
+      void setPreferredAudioLanguage(const Language language);
 
+      /** \brief Returns the preferred language for audio transcoding.
+       *
+       */
+      const Language preferredAudioLanguage() const;
+
+      /** \brief Sets if the subtitles must be extracted if embedded in the video file.
+       * \param[in] value True to extract, false otherwise.
+       *
+       */
+      void setExtractSubtitles(const bool value);
+
+      /** \brief Returns true if the subtitles are to be extracted from the video file if present.
+       *
+       */
+      const bool extractSubtitles() const;
+
+      /** \brief Sets the preferred subtitle language to extract.
+       * \param[in] language Language identifier.
+       *
+       */
+      void setPreferredSubtitleLanguage(const Language language);
+
+      /** \brief Returns the preferred subtitle language to extract.
+       *
+       */
+      const Language preferredSubtitleLanguage() const;
+
+    private:
+      QString    m_root_directory;    /** last used directory.                                 */
+      int        m_number_of_threads; /** number of threads to use.                            */
+      VideoCodec m_videoCodec;        /** output video codec.                                  */
+      int        m_videoBitrate;      /** output video bitrate.                                */
+      AudioCodec m_audioCodec;        /** output audio codec.                                  */
+      int        m_audioBitrate;      /** output audio bitrate.                                */
+      Language   m_outputLanguage;    /** preferred audio/subtitles language.                  */
+      bool       m_extractSubtitles;  /** true to extract embedded subtitles, false otherwise. */
+      int        m_audioChannels;     /** output audio number of channels.                     */
+      Language   m_subtitleLanguage;  /** Subtitle language to extract.                        */
 
       /** settings key strings. */
       static const QString ROOT_DIRECTORY;
@@ -187,7 +223,10 @@ namespace Utils
       static const QString VIDEO_BITRATE;
       static const QString AUDIO_CODEC;
       static const QString AUDIO_BITRATE;
-      static const QString EMBED_SUBTITLES;
+      static const QString AUDIO_CHANNELS_NUM;
+      static const QString AUDIO_LANGUAGE;
+      static const QString SUBTITLE_EXTRACT;
+      static const QString SUBTITLE_LANGUAGE;
   };
 }
 

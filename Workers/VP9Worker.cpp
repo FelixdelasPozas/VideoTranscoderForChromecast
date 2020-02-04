@@ -21,8 +21,8 @@
 #include <Workers/VP9Worker.h>
 
 //--------------------------------------------------------------------
-VP9Worker::VP9Worker(const QFileInfo& sourceInfo, const int videoBitrate, const int audioBitrate)
-: Worker{sourceInfo, videoBitrate, audioBitrate}
+VP9Worker::VP9Worker(const QFileInfo& sourceInfo, const Utils::TranscoderConfiguration &config)
+: Worker(sourceInfo, config)
 {
 }
 

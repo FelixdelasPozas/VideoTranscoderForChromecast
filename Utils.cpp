@@ -30,13 +30,16 @@
 
 const QStringList Utils::MOVIE_FILE_EXTENSIONS   = {"*.mp4", "*.avi", "*.ogv", "*.webm", "*.mkv", "*.mpg", "*.mpeg" };
 
-const QString Utils::TranscoderConfiguration::ROOT_DIRECTORY    = QObject::tr("Root directory");
-const QString Utils::TranscoderConfiguration::NUMBER_OF_THREADS = QObject::tr("Number of threads");
-const QString Utils::TranscoderConfiguration::VIDEO_CODEC       = QObject::tr("Video codec");
-const QString Utils::TranscoderConfiguration::VIDEO_BITRATE     = QObject::tr("Video bitrate");
-const QString Utils::TranscoderConfiguration::AUDIO_CODEC       = QObject::tr("Audio codec");
-const QString Utils::TranscoderConfiguration::AUDIO_BITRATE     = QObject::tr("Audio bitrate");
-const QString Utils::TranscoderConfiguration::EMBED_SUBTITLES   = QObject::tr("Embed subtitles");
+const QString Utils::TranscoderConfiguration::ROOT_DIRECTORY     = QObject::tr("Root directory");
+const QString Utils::TranscoderConfiguration::NUMBER_OF_THREADS  = QObject::tr("Number of threads");
+const QString Utils::TranscoderConfiguration::VIDEO_CODEC        = QObject::tr("Video codec");
+const QString Utils::TranscoderConfiguration::VIDEO_BITRATE      = QObject::tr("Video bitrate");
+const QString Utils::TranscoderConfiguration::AUDIO_CODEC        = QObject::tr("Audio codec");
+const QString Utils::TranscoderConfiguration::AUDIO_BITRATE      = QObject::tr("Audio bitrate");
+const QString Utils::TranscoderConfiguration::AUDIO_CHANNELS_NUM = QObject::tr("Number of channels");
+const QString Utils::TranscoderConfiguration::AUDIO_LANGUAGE     = QObject::tr("Preferred audio language");
+const QString Utils::TranscoderConfiguration::SUBTITLE_EXTRACT   = QObject::tr("Extract subtitles");
+const QString Utils::TranscoderConfiguration::SUBTITLE_LANGUAGE  = QObject::tr("Preferred subtitle language");
 
 //-----------------------------------------------------------------
 bool Utils::isVideoFile(const QFileInfo &file)
@@ -52,10 +55,10 @@ QList<QFileInfo> Utils::findFiles(const QDir initialDir,
                                   bool with_subdirectories,
                                   const std::function<bool (const QFileInfo &)> &condition)
 {
-  QList<QFileInfo> videoFilesFound;
+  QList<QFileInfo> filesFound;
 
   auto startingDir = initialDir;
-  startingDir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDot | QDir::NoDotDot);
+  startingDir.setFilter(QDir::Files | QDir::NoDot | QDir::NoDotDot);
   startingDir.setNameFilters(extensions);
 
   auto flag = (with_subdirectories ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
@@ -66,13 +69,13 @@ QList<QFileInfo> Utils::findFiles(const QDir initialDir,
 
     auto info = it.fileInfo();
 
-    if(condition(info)) continue;
+    if(condition(info))
     {
-      videoFilesFound << info;
+      filesFound << info;
     }
   }
 
-  return videoFilesFound;
+  return filesFound;
 }
 
 //-----------------------------------------------------------------
@@ -82,7 +85,10 @@ Utils::TranscoderConfiguration::TranscoderConfiguration()
 , m_videoBitrate                  {1000}
 , m_audioCodec                    {AudioCodec::VORBIS}
 , m_audioBitrate                  {128}
-, m_embedSubtitles                {true}
+, m_outputLanguage                {Language::DEFAULT}
+, m_extractSubtitles              {true}
+, m_audioChannels                 {2}
+, m_subtitleLanguage              {Language::DEFAULT}
 {
 }
 
@@ -97,11 +103,13 @@ void Utils::TranscoderConfiguration::load()
   m_videoBitrate      = settings.value(VIDEO_BITRATE, 0).toInt();
   m_audioCodec        = static_cast<AudioCodec>(settings.value(AUDIO_CODEC, 0).toInt());
   m_audioBitrate      = settings.value(AUDIO_BITRATE, 0).toInt();
-  m_embedSubtitles    = settings.value(EMBED_SUBTITLES, true).toBool();
+  m_outputLanguage    = static_cast<Language>(settings.value(AUDIO_LANGUAGE, 0).toInt());
+  m_extractSubtitles  = settings.value(SUBTITLE_EXTRACT, true).toBool();
+  m_audioChannels     = settings.value(AUDIO_CHANNELS_NUM, 2).toInt();
+  m_subtitleLanguage  = static_cast<Language>(settings.value(SUBTITLE_LANGUAGE, 0).toInt());
 
   // go to parent or home if the saved directory no longer exists.
   m_root_directory = validDirectoryCheck(m_root_directory);
-
 }
 
 //-----------------------------------------------------------------
@@ -115,7 +123,10 @@ void Utils::TranscoderConfiguration::save() const
   settings.setValue(VIDEO_BITRATE, m_videoBitrate);
   settings.setValue(AUDIO_CODEC, static_cast<int>(m_audioCodec));
   settings.setValue(AUDIO_BITRATE, m_audioBitrate);
-  settings.setValue(EMBED_SUBTITLES, m_embedSubtitles);
+  settings.setValue(AUDIO_LANGUAGE, static_cast<int>(m_outputLanguage));
+  settings.setValue(SUBTITLE_EXTRACT, m_extractSubtitles);
+  settings.setValue(AUDIO_CHANNELS_NUM, m_audioChannels);
+  settings.setValue(SUBTITLE_LANGUAGE, static_cast<int>(m_subtitleLanguage));
 
   settings.sync();
 }
@@ -193,15 +204,51 @@ void Utils::TranscoderConfiguration::setAudioBitrate(const int bitrate)
 }
 
 //-----------------------------------------------------------------
-const bool Utils::TranscoderConfiguration::embedSubtitles() const
+void Utils::TranscoderConfiguration::setPreferredAudioLanguage(const Language language)
 {
-  return m_embedSubtitles;
+  m_outputLanguage = language;
 }
 
 //-----------------------------------------------------------------
-void Utils::TranscoderConfiguration::setEmbedSubtitles(const bool value)
+const Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredAudioLanguage() const
 {
-  m_embedSubtitles = value;
+  return m_outputLanguage;
+}
+
+//-----------------------------------------------------------------
+void Utils::TranscoderConfiguration::setPreferredSubtitleLanguage(const Language language)
+{
+  m_subtitleLanguage = language;
+}
+
+//-----------------------------------------------------------------
+const Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredSubtitleLanguage() const
+{
+  return m_subtitleLanguage;
+}
+
+//-----------------------------------------------------------------
+void Utils::TranscoderConfiguration::setExtractSubtitles(const bool value)
+{
+  m_extractSubtitles = value;
+}
+
+//-----------------------------------------------------------------
+const int Utils::TranscoderConfiguration::audioChannelsNum() const
+{
+  return m_audioChannels;
+}
+
+//-----------------------------------------------------------------
+void Utils::TranscoderConfiguration::setAudioNumberOfChannels(const int channelsNum)
+{
+  m_audioChannels = std::min(7, std::max(2, channelsNum));
+}
+
+//-----------------------------------------------------------------
+const bool Utils::TranscoderConfiguration::extractSubtitles() const
+{
+  return m_extractSubtitles;
 }
 
 //-----------------------------------------------------------------

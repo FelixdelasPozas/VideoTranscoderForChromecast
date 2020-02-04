@@ -27,12 +27,16 @@ using namespace Utils;
 
 //--------------------------------------------------------------------
 ConfigurationDialog::ConfigurationDialog(Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
-: QDialog        {parent, flags}
+: QDialog        (parent, flags)
 , m_configuration{config}
 {
   setupUi(this);
 
   m_videoCodec->setCurrentIndex(static_cast<int>(config.videoCodec()));
+  m_audioLanguage->setCurrentIndex(static_cast<int>(m_configuration.preferredAudioLanguage()));
+  m_extractSubtitles->setChecked(m_configuration.extractSubtitles());
+  m_subtitleLanguage->setCurrentIndex(static_cast<int>(m_configuration.preferredSubtitleLanguage()));
+  m_audioChannels->setValue(m_configuration.audioChannelsNum());
 
   connect(m_videoCodec, SIGNAL(currentIndexChanged(int)), this, SLOT(fillComboBoxes()));
 
@@ -87,7 +91,10 @@ void ConfigurationDialog::accept()
       break;
   }
 
-  m_configuration.setEmbedSubtitles(m_embedSubtitles->isChecked());
+  m_configuration.setPreferredAudioLanguage(static_cast<TranscoderConfiguration::Language>(m_audioLanguage->currentIndex()));
+  m_configuration.setExtractSubtitles(m_extractSubtitles->isChecked());
+  m_configuration.setPreferredSubtitleLanguage(static_cast<TranscoderConfiguration::Language>(m_subtitleLanguage->currentIndex()));
+
 
   QDialog::accept();
 }

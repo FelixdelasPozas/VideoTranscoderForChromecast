@@ -19,41 +19,32 @@
 
 // Project
 #include <AboutDialog.h>
+#include "version.h"
 
 // Qt
 #include <QEvent>
 #include <QKeyEvent>
 
+// libvpx
+#include <vpx_version.h>
+
 const QString AboutDialog::VERSION = QString("version 1.0.0");
 
 //-----------------------------------------------------------------
 AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
-: QDialog{parent, flags}
+: QDialog(parent, flags)
 {
   setupUi(this);
 
   setWindowFlags(windowFlags() & ~(Qt::WindowContextHelpButtonHint) & ~(Qt::WindowMaximizeButtonHint) & ~(Qt::WindowMinimizeButtonHint));
 
   auto compilation_date = QString(__DATE__);
-  auto compilation_time = QString(" (") + QString(__TIME__) + QString(")");
+  auto compilation_time = QString("(") + QString(__TIME__) + QString(")");
 
-  m_compilationDate->setText(tr("Compiled on ") + compilation_date + compilation_time);
+  m_compilationDate->setText(tr("Compiled on %1 %2 build %3").arg(compilation_date).arg(compilation_time).arg(QString::number(BUILD_NUMBER)));
   m_version->setText(VERSION);
-}
 
-//--------------------------------------------------------------------
-bool AboutDialog::event(QEvent* e)
-{
-  if(e->type() == QEvent::KeyPress)
-  {
-    auto ke = dynamic_cast<QKeyEvent *>(e);
-    if(ke && ke->key() == Qt::Key_Escape)
-    {
-      e->accept();
-      close();
-      return true;
-    }
-  }
-
-  return QDialog::event(e);
+  m_qtVersion->setText(tr("version %1").arg(qVersion()));
+  m_libavVersion->setText(tr("version 12")); // does not provide version macro.
+  m_libvpxVersion->setText(tr("version %1.%2.%3").arg(VERSION_MAJOR).arg(VERSION_MINOR).arg(VERSION_PATCH));
 }

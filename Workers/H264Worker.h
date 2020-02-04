@@ -33,11 +33,10 @@ class H264Worker
   public:
     /** \brief H264Worker class constructor.
      * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] videoBitrate Output video bitrate.
-     * \param[in] audioBitrate Output audio bitrate.
+     * \param[in] config Configuration struct reference.
      *
      */
-    explicit H264Worker(const QFileInfo &sourceInfo, const int videoBitrate, const int audioBitrate);
+    explicit H264Worker(const QFileInfo &sourceInfo, const Utils::TranscoderConfiguration &config);
 
     /** \brief H264Worker class virtual destructor.
      *

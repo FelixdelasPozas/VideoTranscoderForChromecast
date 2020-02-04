@@ -21,8 +21,8 @@
 #include <Workers/VP8Worker.h>
 
 //--------------------------------------------------------------------
-VP8Worker::VP8Worker(const QFileInfo& sourceInfo, const int videoBitrate, const int audioBitrate)
-: Worker{sourceInfo, videoBitrate, audioBitrate}
+VP8Worker::VP8Worker(const QFileInfo& sourceInfo, const Utils::TranscoderConfiguration &config)
+: Worker(sourceInfo, config)
 {
 }
 

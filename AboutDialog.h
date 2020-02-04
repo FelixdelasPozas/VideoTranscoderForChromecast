@@ -29,12 +29,12 @@
 class QEvent;
 
 /** \class AboutDialog
- * \brief Implements the narcissitic dialog.
+ * \brief Implements the narcissistic dialog.
  *
  */
 class AboutDialog
 : public QDialog
-, public Ui_AboutDialog
+, private Ui_AboutDialog
 {
     Q_OBJECT
   public:
@@ -45,14 +45,11 @@ class AboutDialog
      */
     AboutDialog(QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
 
-    /** \briof AboutDialog class virtual destructor.
+    /** \brief AboutDialog class virtual destructor.
      *
      */
     virtual ~AboutDialog()
     {}
-
-  protected:
-    bool event(QEvent *e) override;
 
   private:
     static const QString VERSION; /** application version string. */

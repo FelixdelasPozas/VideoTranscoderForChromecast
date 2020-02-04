@@ -27,6 +27,13 @@
 #include <QThread>
 #include <QFileInfo>
 
+// libav
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+}
+
 /** \class Worker
  * \brief Transcoder thread.
  *
@@ -38,11 +45,10 @@ class Worker
   public:
     /** \brief Worker class constructor.
      * \param[in] source_info QFileInfo struct of the source file.
-     * \param[in] videoBitrate Output video bitrate.
-     * \param[in] audioBitrate Output audio bitrate.
+     * \param[in] config Configuration struct reference.
      *
      */
-    explicit Worker(const QFileInfo &source_info, const int videoBitrate, const int audioBitrate);
+    explicit Worker(const QFileInfo &source_info, const Utils::TranscoderConfiguration &config);
     virtual ~Worker()
     {}
 
@@ -88,9 +94,34 @@ class Worker
      */
     virtual void run_implementation() = 0;
 
+    /** \brief Helper method to get a user-friendly description of a libav error code.
+     *
+     */
+    QString av_error_string(const int error_number) const;
+
   protected:
-    const int m_videoBitrate; /** video bitrate. */
-    const int m_audioBitrate; /** audio bitrate. */
+    int                                   m_videoBitrate;             /** output file video bitrate.             */
+    int                                   m_audioBitrate;             /** output file audio bitrate.             */
+    const Utils::TranscoderConfiguration &m_configuration;            /** Configuration struct reference.        */
+    QFile                                 m_input_file;               /** input file handle.                     */
+    QFile                                 m_output_file;              /** output file handle.                    */
+    AVCodec                              *m_audio_decoder;            /** libav audio decoder.                   */
+    AVCodec                              *m_video_decoder;            /** libav video decoder.                   */
+    AVCodec                              *m_subtitle_decoder;         /** libav subtitle decoder.                */
+    AVCodecContext                       *m_audio_decoder_context;    /** libav audio decoder context.           */
+    AVCodecContext                       *m_video_decoder_context;    /** libav video decoder context.           */
+    AVCodecContext                       *m_subtitle_decoder_context; /** libav subtitle decoder context.        */
+    AVFrame                              *m_frame;                    /** libav frame (decoded data).            */
+    int                                   m_audio_stream_id;          /** id of the audio stream in the file.    */
+    int                                   m_video_stream_id;          /** id of the video stream in the file.    */
+    int                                   m_subtitle_stream_id;       /** id of the subtitle stream in the file. */
+    AVFormatContext                      *m_libav_context;            /** libav context.                         */
+    AVPacket                             *m_packet;                   /** libav packet (encoded data).           */
+
+    static const int s_io_buffer_size = 16384 + AV_INPUT_BUFFER_PADDING_SIZE;
+
+    static const QList<int> VALID_VIDEO_CODECS; /** Valid video codecs for a Chromecast valid video. */
+    static const QList<int> VALID_AUDIO_CODECS; /** Valid audio codecs for a Chromecast valid audio. */
 
   private:
     /** \brief Returns true if the input file can be read and false otherwise.
@@ -103,10 +134,45 @@ class Worker
      */
     bool check_output_file_permissions();
 
+    /** \brief Initializes libav and opens the input file with the decoders.
+     *
+     */
+    bool init_libav();
+
+    /** \brief De-Initializes libav and deletes all assigned memory.
+     *
+     */
+    void deinit_libav();
+
+    /** \brief Custom I/O read for libav, using a QFile.
+     * \param[in] opaque pointer to the reader.
+     * \param[in] buffer buffer to fill
+     * \param[in] buffer_size buffer size.
+     *
+     */
+    static int custom_IO_read(void *opaque, unsigned char *buffer, int buffer_size);
+
+    /** \brief Custom I/O seek for libav, using a QFile.
+     * \param[in] opaque pointer to the reader.
+     * \param[in] offset seek value.
+     * \param[in] whence seek direction.
+     *
+     */
+    static long long int custom_IO_seek(void *opaque, long long int offset, int whence);
+
     /** \brief Returns the output file extension as a QString.
      *
      */
     virtual const QString outputExtension() const = 0;
+
+    /** \brief Returns true if the input video file needs to be processed because either the video or
+     * the audio is not in a correct format or the subtitles needs to be extracted.
+     *
+     */
+    const bool inputNeedsProcessing() const;
+
+    Worker(const Worker &) = delete;
+    Worker& operator=(const Worker&) = delete;
 
     const QFileInfo m_source_info;  /** source file information.                             */
     const QString   m_source_path;  /** source file path.                                    */

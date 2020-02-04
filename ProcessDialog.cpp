@@ -223,19 +223,20 @@ void ProcessDialog::create_transcoder()
   switch(m_configuration.videoCodec())
   {
     case Utils::TranscoderConfiguration::VideoCodec::H264:
-      worker = new H264Worker(fs_handle, m_configuration.videoBitrate(), m_configuration.audioBitrate());
+      worker = new H264Worker(fs_handle, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::H265:
-      worker = new H265Worker(fs_handle, m_configuration.videoBitrate(), m_configuration.audioBitrate());
+      worker = new H265Worker(fs_handle, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::VP8:
-      worker = new VP8Worker(fs_handle, m_configuration.videoBitrate(), m_configuration.audioBitrate());
+      worker = new VP8Worker(fs_handle, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::VP9:
-      worker = new VP9Worker(fs_handle, m_configuration.videoBitrate(), m_configuration.audioBitrate());
+      worker = new VP9Worker(fs_handle, m_configuration);
       break;
     default:
       Q_ASSERT(false);
+      break;
   }
 
   auto message = QString("%1").arg(fs_handle.absoluteFilePath().split('/').last());
