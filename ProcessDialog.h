@@ -27,6 +27,7 @@
 // Qt
 #include <QDialog>
 #include <QFileInfo>
+#include <QtWinExtras/QWinTaskbarButton>
 
 // libav
 extern "C"
@@ -63,6 +64,7 @@ class ProcessDialog
 
   protected:
     virtual void closeEvent(QCloseEvent *e) override final;
+    virtual void showEvent(QShowEvent *e) override final;
 
   private slots:
     /** \brief Stops the process.
@@ -142,6 +144,7 @@ class ProcessDialog
     bool                                       m_finished_transcoding; /** true if process finished, false otherwise. */
     QMutex                                     m_mutex;                /** protects internal data and writes to log.  */
     QMap<QProgressBar *, Worker *>             m_progress_bars;        /** maps worker<->progress bar.                */
+    QWinTaskbarButton                         *m_taskBarButton;        /** taskbar progress widget.                   */
 };
 
 #endif // PROCESSDIALOG_H_

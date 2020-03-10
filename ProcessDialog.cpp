@@ -24,12 +24,14 @@
 // Qt
 #include <QEvent>
 #include <QKeyEvent>
+#include <QtWinExtras/QWinTaskbarProgress>
 
 //--------------------------------------------------------------------
 ProcessDialog::ProcessDialog(const std::vector<boost::filesystem::path> &files, const Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
-: QDialog(parent, flags)
-, m_files(files)
+: QDialog        (parent, flags)
+, m_files        (files)
 , m_configuration{config}
+, m_taskBarButton{nullptr}
 {
   setupUi(this);
 
@@ -80,6 +82,7 @@ ProcessDialog::ProcessDialog(const std::vector<boost::filesystem::path> &files, 
 ProcessDialog::~ProcessDialog()
 {
   m_progress_bars.clear();
+  m_taskBarButton->deleteLater();
   unregister_av_lock_manager();
 }
 
@@ -154,6 +157,7 @@ void ProcessDialog::increment_global_progress()
   {
     auto value = m_globalProgress->value();
     m_globalProgress->setValue(++value);
+    m_taskBarButton->progress()->setValue(value);
   }
 
   --m_num_workers;
@@ -336,4 +340,16 @@ void ProcessDialog::unregister_av_lock_manager()
 void ProcessDialog::exit_dialog()
 {
   close();
+}
+
+//-----------------------------------------------------------------
+void ProcessDialog::showEvent(QShowEvent *e)
+{
+  QDialog::showEvent(e);
+
+  m_taskBarButton = new QWinTaskbarButton(this);
+  m_taskBarButton->setWindow(this->windowHandle());
+  m_taskBarButton->progress()->setRange(m_globalProgress->minimum(), m_globalProgress->maximum());
+  m_taskBarButton->progress()->setVisible(true);
+  m_taskBarButton->progress()->setValue(0);
 }

@@ -46,9 +46,9 @@ Worker::Worker(const boost::filesystem::path &source_info, const Utils::Transcod
 , m_subtitle_decoder_context{nullptr}
 , m_input_context           {nullptr}
 , m_frame                   {nullptr}
-, m_audio_stream_id         {-1}
-, m_video_stream_id         {-1}
-, m_subtitle_stream_id      {-1}
+, m_audio_stream_id         {AVERROR_STREAM_NOT_FOUND}
+, m_video_stream_id         {AVERROR_STREAM_NOT_FOUND}
+, m_subtitle_stream_id      {AVERROR_STREAM_NOT_FOUND}
 , m_output_context          {nullptr}
 , m_audio_coder_context     {nullptr}
 , m_video_coder_context     {nullptr}
