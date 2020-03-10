@@ -13,12 +13,21 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
 
+# Manually setting Boost because the CMake script is pure shit
+set(Boost_INCLUDE_DIR "D:/Desarrollo/Bibliotecas/boost_1_72_0")
+set(Boost_LIBRARIES "D:/Desarrollo/Bibliotecas/boost_1_72_0/bin.v2/libs/program_options/build/gcc-8.2.0/release/link-static/threading-multi/visibility-hidden/libboost_program_options-mgw82-mt-x64-1_72.a"
+                    "D:/Desarrollo/Bibliotecas/boost_1_72_0/bin.v2/libs/filesystem/build/gcc-8.2.0/release/link-static/threading-multi/visibility-hidden/libboost_filesystem-mgw82-mt-x64-1_72.a")
+
 # Find the QtWidgets library
-find_package(Qt5 COMPONENTS Widgets)
+find_package(Qt5 COMPONENTS Widgets WinExtras)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   set(CORE_EXTERNAL_LIBS ${CORE_EXTERNAL_LIBS} ${QT_QTTEST_LIBRARY})
 endif (CMAKE_BUILD_TYPE MATCHES Debug)
+
+# Instruct CMake to run moc automatically when needed.
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 
 if(DEFINED MINGW)
   configure_file("${PROJECT_SOURCE_DIR}/resources.rc.in" "${PROJECT_BINARY_DIR}/resources.rc")
@@ -52,6 +61,7 @@ include_directories(
   ${LIBAV_INCLUDE_DIR}
   ${LIBVPX_INCLUDE_DIR}
   ${ZLIB_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIR}
   )
 
 set(CMAKE_CXX_FLAGS " -Wall -Wno-deprecated -std=c++11 -mwindows -m64")
@@ -82,16 +92,14 @@ set (CORE_SOURCES
   ConfigurationDialog.cpp
   ProcessDialog.cpp
   Worker.cpp
-  Workers/VP8Worker.cpp
-  Workers/VP9Worker.cpp
-  Workers/H264Worker.cpp
-  Workers/H265Worker.cpp
 )
 
 SET_SOURCE_FILES_PROPERTIES(${CORE_SOURCES} PROPERTIES OBJECT_DEPENDS "${CORE_UI}")
 
 set(CORE_EXTERNAL_LIBS
-  ${QT_LIBRARIES}
+  Qt5::Widgets
+  Qt5::WinExtras
+  ${Boost_LIBRARIES}
   ${LIBAV_LIBRARIES}
   ${LIBVPX_LIBRARY}
   ${ZLIB_LIBRARY}

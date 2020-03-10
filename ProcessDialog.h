@@ -52,7 +52,7 @@ class ProcessDialog
      * \param[in] flags Window flags.
      *
      */
-    explicit ProcessDialog(const QList<QFileInfo> &files, const Utils::TranscoderConfiguration &config, QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
+    explicit ProcessDialog(const std::vector<boost::filesystem::path> &files, const Utils::TranscoderConfiguration &config, QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
 
     /** \brief ProcessDialog class virtual destructor.
      *
@@ -134,14 +134,14 @@ class ProcessDialog
      */
     static int lock_manager(void **mutex, enum AVLockOp op);
 
-    QList<QFileInfo>                      m_files;                /** list of file informations.                 */
-    int                                   m_max_workers;          /** max number of simultaneous threads.        */
-    int                                   m_num_workers;          /** current number of simultaneous threads.    */
-    const Utils::TranscoderConfiguration &m_configuration;        /** application configuration struct.          */
-    int                                   m_errorsCount;          /** number of errors that have ocurred.        */
-    bool                                  m_finished_transcoding; /** true if process finished, false otherwise. */
-    QMutex                                m_mutex;                /** protects internal data and writes to log.  */
-    QMap<QProgressBar *, Worker *>        m_progress_bars;        /** maps worker<->progress bar.                */
+    const std::vector<boost::filesystem::path> m_files;                /** list of file informations.                 */
+    int                                        m_max_workers;          /** max number of simultaneous threads.        */
+    int                                        m_num_workers;          /** current number of simultaneous threads.    */
+    const Utils::TranscoderConfiguration      &m_configuration;        /** application configuration struct.          */
+    int                                        m_errorsCount;          /** number of errors that have ocurred.        */
+    bool                                       m_finished_transcoding; /** true if process finished, false otherwise. */
+    QMutex                                     m_mutex;                /** protects internal data and writes to log.  */
+    QMap<QProgressBar *, Worker *>             m_progress_bars;        /** maps worker<->progress bar.                */
 };
 
 #endif // PROCESSDIALOG_H_

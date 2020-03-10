@@ -29,23 +29,26 @@
 #include <QPair>
 #include <QMutex>
 
+// Boost
+#include <boost/filesystem.hpp>
+
 namespace Utils
 {
-  extern const QStringList MOVIE_FILE_EXTENSIONS;
+  extern const std::vector<std::wstring> MOVIE_FILE_EXTENSIONS;
   static QMutex s_mutex;
 
   /** \brief Returns true if the file given as parameter has a video extension.
-   * \param[in] file file QFileInfo struct.
+   * \param[in] file file path.
    *
    */
-  bool isVideoFile(const QFileInfo &file);
+  bool isVideoFile(const boost::filesystem::path &file);
 
   /** \brief Checks the given directory for existance and readability. If the directory is
    *  not readable or doesn't exist it will try the parent recursively until returning a valid
    *  path or the user home directory.
    * \param[in] directory path.
    */
-  const QString validDirectoryCheck(const QString &directory);
+  boost::filesystem::path validDirectoryCheck(const boost::filesystem::path &directory);
 
   /** \brief Returns the files in the specified directory tree that has the specified extensions.
    * \param[in] rootDir starting directory.
@@ -54,15 +57,11 @@ namespace Utils
    *            comply the conditions must be returned.
    * \param[in] condition additional condition that the files must comply with.
    *
-   * NOTE: while this will return any file info (that complies with the filter and the conditions) mp3
-   *       files will be returned first. That's because i want to process those before anything else.
-   *       Yes, it's arbitrary but doesn't affect the results.
-   *
    */
-  QList<QFileInfo> findFiles(const QDir rootDirectory,
-                             const QStringList extensions,
-                             bool with_subdirectories = true,
-                             const std::function<bool (const QFileInfo &)> &condition = Utils::isVideoFile);
+  std::vector<boost::filesystem::path> findFiles(const boost::filesystem::path &rootDirectory,
+                                                 const std::vector<std::wstring> &extensions,
+                                                 bool with_subdirectories = true,
+                                                 const std::function<bool (const boost::filesystem::path &)> &condition = Utils::isVideoFile);
 
   /** \class TranscoderConfiguration
    * \brief Implements the configuration storage/management.
@@ -93,13 +92,13 @@ namespace Utils
       /** \brief Returns the root directory to start searching for files.
        *
        */
-      const QString &rootDirectory() const;
+      const boost::filesystem::path &rootDirectory() const;
 
       /** \brief Sets the root directory to start searching for files to transcode.
        * \param[in] path root directory path.
        *
        */
-      void setRootDirectory(const QString &path);
+      void setRootDirectory(const boost::filesystem::path &path);
 
       /** \brief Returns the number of simultaneous threads in the transcoding process.
        *
@@ -205,16 +204,16 @@ namespace Utils
       const Language preferredSubtitleLanguage() const;
 
     private:
-      QString    m_root_directory;    /** last used directory.                                 */
-      int        m_number_of_threads; /** number of threads to use.                            */
-      VideoCodec m_videoCodec;        /** output video codec.                                  */
-      int        m_videoBitrate;      /** output video bitrate.                                */
-      AudioCodec m_audioCodec;        /** output audio codec.                                  */
-      int        m_audioBitrate;      /** output audio bitrate.                                */
-      Language   m_outputLanguage;    /** preferred audio/subtitles language.                  */
-      bool       m_extractSubtitles;  /** true to extract embedded subtitles, false otherwise. */
-      int        m_audioChannels;     /** output audio number of channels.                     */
-      Language   m_subtitleLanguage;  /** Subtitle language to extract.                        */
+      boost::filesystem::path m_root_directory;    /** last used directory.                                 */
+      int                     m_number_of_threads; /** number of threads to use.                            */
+      VideoCodec              m_videoCodec;        /** output video codec.                                  */
+      int                     m_videoBitrate;      /** output video bitrate.                                */
+      AudioCodec              m_audioCodec;        /** output audio codec.                                  */
+      int                     m_audioBitrate;      /** output audio bitrate.                                */
+      Language                m_outputLanguage;    /** preferred audio/subtitles language.                  */
+      bool                    m_extractSubtitles;  /** true to extract embedded subtitles, false otherwise. */
+      int                     m_audioChannels;     /** output audio number of channels.                     */
+      Language                m_subtitleLanguage;  /** Subtitle language to extract.                        */
 
       /** settings key strings. */
       static const QString ROOT_DIRECTORY;

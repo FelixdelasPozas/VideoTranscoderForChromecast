@@ -21,6 +21,9 @@
 #include <Worker.h>
 #include <QDebug>
 
+// C++
+#include <iostream>
+
 // libav
 extern "C"
 {
@@ -30,34 +33,41 @@ extern "C"
 const QList<int> Worker::VALID_VIDEO_CODECS = { AV_CODEC_ID_VP8, AV_CODEC_ID_VP9, AV_CODEC_ID_H264, AV_CODEC_ID_HEVC };
 const QList<int> Worker::VALID_AUDIO_CODECS = { AV_CODEC_ID_MP3, AV_CODEC_ID_AAC, AV_CODEC_ID_VORBIS };
 
+const std::wstring SUBTITLE_EXTENSION = L".srt";
+
 //--------------------------------------------------------------------
-Worker::Worker(const QFileInfo &source_info, const Utils::TranscoderConfiguration &config)
-: m_videoBitrate            {-1}
-, m_audioBitrate            {-1}
-, m_configuration           {config}
+Worker::Worker(const boost::filesystem::path &source_info, const Utils::TranscoderConfiguration &config)
+: m_configuration           {config}
 , m_audio_decoder           {nullptr}
 , m_video_decoder           {nullptr}
 , m_subtitle_decoder        {nullptr}
 , m_audio_decoder_context   {nullptr}
 , m_video_decoder_context   {nullptr}
 , m_subtitle_decoder_context{nullptr}
+, m_input_context           {nullptr}
 , m_frame                   {nullptr}
 , m_audio_stream_id         {-1}
 , m_video_stream_id         {-1}
 , m_subtitle_stream_id      {-1}
-, m_libav_context           {nullptr}
+, m_output_context          {nullptr}
+, m_audio_coder_context     {nullptr}
+, m_video_coder_context     {nullptr}
+, m_audio_coder             {nullptr}
+, m_video_coder             {nullptr}
 , m_packet                  {nullptr}
 , m_source_info             (source_info)
-, m_source_path             (m_source_info.absoluteFilePath().remove(m_source_info.absoluteFilePath().split(QDir::separator()).last()))
+, m_source_path             (source_info.parent_path())
 , m_fail                    {false}
 , m_stop                    {false}
+, m_audioStream             {nullptr}
+, m_videoStream             {nullptr}
 {
 }
 
 //--------------------------------------------------------------------
 void Worker::stop()
 {
-  emit information_message(QString("Transcoder for '%1' has been cancelled.").arg(m_source_info.absoluteFilePath()));
+  emit information_message(QString("Transcoder for '%1' has been cancelled.").arg(QString::fromStdWString(m_source_info.wstring())));
   m_stop = true;
 }
 
@@ -76,38 +86,60 @@ bool Worker::has_failed()
 //--------------------------------------------------------------------
 void Worker::run()
 {
-  if(check_input_file_permissions() && check_output_file_permissions())
+  if(check_input_file_permissions() && init_libav() && check_output_file_permissions())
   {
-    if(init_libav())
+    if(inputNeedsProcessing())
     {
-      if(inputNeedsProcessing())
+      if(create_output())
       {
-        run_implementation();
+        return;
+//        int value = 0;
+//        while(0 == (value = av_read_frame(m_input_context, m_packet)) && !has_been_cancelled())
+//        {
+//          switch(m_packet->stream_index)
+//          {
+//            case m_audio_stream_id:
+//              break;
+//            case m_video_stream_id:
+//              break;
+//            case m_subtitle_stream_id:
+//              break;
+//            default:
+//              // discard
+//              break;
+//          }
+//        }
       }
       else
       {
-        emit information_message(tr("Not processed: '%1' is already in the correct format for Chromecast").arg(m_input_file.fileName()));
+        emit error_message(tr("Unable to create output or configure it for file: '%1").arg(m_input_file.fileName()));
+        m_fail = true;
       }
     }
     else
     {
-      m_fail = true;
+      emit information_message(tr("Not processed: '%1' is already in the correct format for Chromecast").arg(m_input_file.fileName()));
     }
 
     deinit_libav();
   }
+  else
+  {
+    m_fail = true;
+  }
 
   emit progress(100);
-  qDebug() << "finished worker" << this->thread()->currentThreadId();
 }
 
 //--------------------------------------------------------------------
 bool Worker::check_input_file_permissions()
 {
-  QFile file(m_source_info.absoluteFilePath());
+  const auto qFilename = QString::fromStdWString(m_source_info.wstring());
+
+  QFile file(qFilename);
   if(file.exists() && !file.open(QFile::ReadOnly))
   {
-    emit error_message(QString("Can't open file '%1' but it exists, check for permissions.").arg(m_source_info.absoluteFilePath()));
+    emit error_message(QString("Can't open file '%1' but it exists, check for permissions.").arg(qFilename));
     m_fail = true;
     return false;
   }
@@ -119,16 +151,34 @@ bool Worker::check_input_file_permissions()
 //--------------------------------------------------------------------
 bool Worker::check_output_file_permissions()
 {
-  QFile file(m_source_path + m_source_info.baseName() + outputExtension());
-  if(!file.open(QFile::WriteOnly|QFile::Truncate))
+  if(needsAudioProcessing() || needsVideoProcessing())
   {
-    emit error_message(QString("Can't create files in '%1' path, check for permissions.").arg(m_source_info.absoluteFilePath()));
-    m_fail = true;
-    return false;
+    const auto qFilename = QString::fromStdWString(m_source_info.stem().wstring() + outputExtension());
+    QFile outputFile(qFilename);
+    if(!outputFile.open(QFile::WriteOnly|QFile::Truncate))
+    {
+      emit error_message(QString("Unable to create output file in '%1' path, check for permissions.").arg(qFilename));
+      return false;
+    }
+
+    outputFile.close();
+    outputFile.remove();
   }
 
-  file.close();
-  file.remove();
+  if(m_configuration.extractSubtitles())
+  {
+    const auto qFilename = QString::fromStdWString(m_source_info.stem().wstring() + SUBTITLE_EXTENSION);
+    QFile outputFile(qFilename);
+    if(!outputFile.open(QFile::WriteOnly|QFile::Truncate))
+    {
+      emit error_message(QString("Unable to create subtitle file in '%1' path, check for permissions.").arg(qFilename));
+      return false;
+    }
+
+    outputFile.close();
+    outputFile.remove();
+  }
+
   return true;
 }
 
@@ -139,7 +189,7 @@ bool Worker::init_libav()
 
   av_register_all();
 
-  auto source_name = m_source_info.absoluteFilePath();
+  auto source_name = QString::fromStdWString(m_source_info.wstring());
   m_input_file.setFileName(source_name);
   if(!m_input_file.open(QIODevice::ReadOnly))
   {
@@ -164,11 +214,11 @@ bool Worker::init_libav()
   avioContext->seekable = 0;
   avioContext->write_flag = 0;
 
-  m_libav_context = avformat_alloc_context();
-  m_libav_context->pb = avioContext;
-  m_libav_context->flags |= AVFMT_FLAG_CUSTOM_IO;
+  m_input_context = avformat_alloc_context();
+  m_input_context->pb = avioContext;
+  m_input_context->flags |= AVFMT_FLAG_CUSTOM_IO;
 
-  auto value = avformat_open_input(&m_libav_context, "dummy", nullptr, nullptr);
+  auto value = avformat_open_input(&m_input_context, source_name.toStdString().c_str(), nullptr, nullptr);
   if (value < 0)
   {
     emit error_message(QString("Couldn't open file: '%1' with libav. Error is \"%2\"").arg(source_name).arg(av_error_string(value)));
@@ -176,21 +226,54 @@ bool Worker::init_libav()
   }
 
   // avoids a warning message from libav when the duration can't be calculated accurately. this increases the lookup frames.
-  m_libav_context->max_analyze_duration *= 1000;
+  m_input_context->max_analyze_duration *= 1000;
 
-  value = avformat_find_stream_info(m_libav_context, nullptr);
+  value = avformat_find_stream_info(m_input_context, nullptr);
   if(value < 0)
   {
     emit error_message(QString("Couldn't get the information of '%1'. Error is \"%2\".").arg(source_name).arg(av_error_string(value)));
     return false;
   }
 
-  m_audio_stream_id = av_find_best_stream(m_libav_context, AVMEDIA_TYPE_AUDIO, -1, -1, &m_audio_decoder, 0);
+  for(unsigned int id = 0; id < m_input_context->nb_streams; id++)
+  {
+    if(m_input_context->streams[id]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+    {
+      auto lang = av_dict_get(m_input_context->streams[id]->metadata, "language", nullptr, 0);
+
+      if(!lang)
+      {
+        m_audio_stream_id = id;
+        break;
+      }
+
+      if(strcmp(lang->value, "spa"))
+      {
+        m_audio_stream_id = id;
+        if (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::SPANISH)
+        {
+          break;
+        }
+      }
+
+      if(strcmp(lang->value, "eng"))
+      {
+        m_audio_stream_id = id;
+        if (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH)
+        {
+          break;
+        }
+      }
+    }
+  }
+
   if (m_audio_stream_id < 0)
   {
     emit error_message(QString("Couldn't find any audio stream in '%1'. Error is \"%2\".").arg(source_name).arg(av_error_string(m_audio_stream_id)));
     return false;
   }
+
+  av_find_best_stream(m_input_context, AVMEDIA_TYPE_AUDIO, m_audio_stream_id, -1, &m_audio_decoder, 0);
 
   if(!m_audio_decoder)
   {
@@ -202,8 +285,7 @@ bool Worker::init_libav()
   // decoder context with the correct parameters found during av_format_find_info(). The method:
   // avcodec_alloc_context3(const AVCodec *codec) returns an uninitalized context that fails in
   // the send_packet() API. Also, in the examples it's done this way. Why if it's being deprecated?
-  m_audio_decoder_context = m_libav_context->streams[m_audio_stream_id]->codec;
-  m_audioBitrate          = m_libav_context->streams[m_audio_stream_id]->codecpar->bit_rate;
+  m_audio_decoder_context = m_input_context->streams[m_audio_stream_id]->codec;
 
   value = avcodec_open2(m_audio_decoder_context, m_audio_decoder, nullptr);
   if (value < 0 || !avcodec_is_open(m_audio_decoder_context))
@@ -212,7 +294,7 @@ bool Worker::init_libav()
     return false;
   }
 
-  m_video_stream_id = av_find_best_stream(m_libav_context, AVMEDIA_TYPE_VIDEO, -1, -1, &m_video_decoder, 0);
+  m_video_stream_id = av_find_best_stream(m_input_context, AVMEDIA_TYPE_VIDEO, -1, -1, &m_video_decoder, 0);
   if (m_video_stream_id < 0)
   {
     emit error_message(QString("Couldn't find any video stream in '%1'. Error is \"%2\".").arg(source_name).arg(av_error_string(m_video_stream_id)));
@@ -225,8 +307,7 @@ bool Worker::init_libav()
     return false;
   }
 
-  m_video_decoder_context = m_libav_context->streams[m_video_stream_id]->codec;
-  m_videoBitrate          = m_libav_context->streams[m_video_stream_id]->codecpar->bit_rate;
+  m_video_decoder_context = m_input_context->streams[m_video_stream_id]->codec;
 
   value = avcodec_open2(m_video_decoder_context, m_video_decoder, nullptr);
   if (value < 0 || !avcodec_is_open(m_video_decoder_context))
@@ -235,7 +316,51 @@ bool Worker::init_libav()
     return false;
   }
 
-  m_subtitle_stream_id = av_find_best_stream(m_libav_context, AVMEDIA_TYPE_SUBTITLE, -1, -1, &m_subtitle_decoder, 0);
+  if(m_configuration.extractSubtitles())
+  {
+    for(unsigned int id = 0; id < m_input_context->nb_streams; id++)
+    {
+      if(m_input_context->streams[id]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
+      {
+        auto lang = av_dict_get(m_input_context->streams[id]->metadata, "language", nullptr, 0);
+
+        if(!lang)
+        {
+          m_audio_stream_id = id;
+          break;
+        }
+
+        if(strcmp(lang->value, "spa"))
+        {
+          m_subtitle_stream_id = id;
+          if (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::SPANISH)
+          {
+            break;
+          }
+        }
+
+        if(strcmp(lang->value, "eng"))
+        {
+          m_subtitle_stream_id = id;
+          if (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH)
+          {
+            break;
+          }
+        }
+      }
+    }
+
+    if(m_subtitle_stream_id != -1)
+    {
+      av_find_best_stream(m_input_context, AVMEDIA_TYPE_SUBTITLE, m_subtitle_stream_id, -1, &m_subtitle_decoder, 0);
+
+      if(!m_subtitle_decoder)
+      {
+        emit error_message(QString("Couldn't find subtitle decoder for '%1'.").arg(source_name));
+        return false;
+      }
+    }
+  }
 
   m_packet = av_packet_alloc();
   m_frame  = av_frame_alloc();
@@ -251,41 +376,31 @@ void Worker::deinit_libav()
     m_input_file.close();
   }
 
-  if(m_audio_decoder_context)
+  for(auto context: {m_audio_decoder_context, m_video_decoder_context, m_subtitle_decoder_context, m_audio_coder_context, m_video_coder_context})
   {
-    avcodec_close(m_audio_decoder_context);
+    if(context) avcodec_free_context(&context);
   }
 
-  if(m_video_decoder_context)
+  if(m_input_context)
   {
-    avcodec_close(m_video_decoder_context);
+    if(m_input_context->pb) av_free(m_input_context->pb->buffer);
+    avformat_close_input(&m_input_context);
   }
 
-  if(m_audio_decoder)
+  if(m_output_context)
   {
-    m_audio_decoder = nullptr;
+    if (!(m_output_context->oformat->flags & AVFMT_NOFILE))
+    {
+      avio_close(m_output_context->pb);
+    }
+
+    av_write_trailer(m_output_context);
+    avformat_free_context(m_output_context);
+    m_output_context = nullptr;
   }
 
-  if(m_video_decoder)
-  {
-    m_video_decoder = nullptr;
-  }
-
-  if(m_libav_context)
-  {
-    av_free(m_libav_context->pb->buffer);
-    avformat_close_input(&m_libav_context);
-  }
-
-  if(m_frame)
-  {
-    av_frame_free(&m_frame);
-  }
-
-  if(m_packet)
-  {
-    av_packet_free(&m_packet);
-  }
+  if(m_frame)  av_frame_free(&m_frame);
+  if(m_packet) av_packet_free(&m_packet);
 }
 
 //-----------------------------------------------------------------
@@ -326,11 +441,85 @@ QString Worker::av_error_string(const int error_num) const
 }
 
 //-----------------------------------------------------------------
-const bool Worker::inputNeedsProcessing() const
+bool Worker::inputNeedsProcessing() const
 {
-  if(!VALID_VIDEO_CODECS.contains(m_video_decoder->id))                                                                            return true;
-  if(!VALID_AUDIO_CODECS.contains(m_audio_decoder->id) || m_audio_decoder_context->channels != m_configuration.audioChannelsNum()) return true;
-  if(m_subtitle_stream_id != AVERROR_STREAM_NOT_FOUND && m_configuration.extractSubtitles())                                       return true;
+  return needsAudioProcessing() || needsVideoProcessing() || needsSubtitleProcessing();
+}
 
-  return false;
+//-----------------------------------------------------------------
+bool Worker::needsAudioProcessing() const
+{
+  return (!VALID_AUDIO_CODECS.contains(m_audio_decoder->id) || m_audio_decoder_context->channels != m_configuration.audioChannelsNum());
+}
+
+//-----------------------------------------------------------------
+bool Worker::needsVideoProcessing() const
+{
+  return (!VALID_VIDEO_CODECS.contains(m_video_decoder->id));
+}
+
+//-----------------------------------------------------------------
+bool Worker::needsSubtitleProcessing() const
+{
+  return (m_subtitle_stream_id != AVERROR_STREAM_NOT_FOUND && m_configuration.extractSubtitles());
+}
+
+//-----------------------------------------------------------------
+bool Worker::create_output()
+{
+  auto filename = QString::fromStdWString(m_source_info.stem().wstring() + outputExtension());
+
+  auto format = av_guess_format(nullptr, filename.toStdString().c_str(), nullptr);
+
+  if(!format) return false;
+
+  m_output_context = avformat_alloc_context();
+
+  if(!m_output_context) return false;
+
+  m_audio_coder = avcodec_find_encoder(audioCodecId());
+
+  if(!m_audio_coder) return false;
+
+  m_audio_coder_context = avcodec_alloc_context3(m_audio_coder);
+
+  if(!m_audio_coder_context) return false;
+
+  // some formats want stream headers to be separate
+  if (format->flags & AVFMT_GLOBALHEADER) m_audio_coder_context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+  m_video_coder = avcodec_find_encoder(videoCodecId());
+
+  if(!m_video_coder) return false;
+
+  m_video_coder_context = avcodec_alloc_context3(m_video_coder);
+
+  if(!m_video_coder_context) return false;
+
+  // some formats want stream headers to be separate
+  if (format->flags & AVFMT_GLOBALHEADER) m_video_coder_context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+  if(avcodec_parameters_to_context(m_audio_coder_context, m_input_context->streams[m_audio_stream_id]->codecpar) < 0) return false;
+  if(avcodec_parameters_to_context(m_video_coder_context, m_input_context->streams[m_video_stream_id]->codecpar) < 0) return false;
+
+  m_audioStream = avformat_new_stream(m_output_context, m_audio_coder);
+
+  if(!m_audioStream) return false;
+
+  m_videoStream = avformat_new_stream(m_output_context, m_video_coder);
+
+  if(!m_videoStream) return false;
+
+  if(avcodec_open2(m_audio_coder_context, m_audio_coder, nullptr) < 0) return false;
+  if(avcodec_open2(m_video_coder_context, m_video_coder, nullptr) < 0) return false;
+
+  /* open the output file, if needed */
+  if (!(format->flags & AVFMT_NOFILE))
+  {
+    if (avio_open(&m_output_context->pb, filename.toStdString().c_str(), AVIO_FLAG_WRITE) < 0) return false;
+  }
+
+  if(avformat_write_header(m_output_context, nullptr) < 0) return false;
+
+  return true;
 }

@@ -28,7 +28,10 @@
 // C++
 #include <thread>
 
-const QStringList Utils::MOVIE_FILE_EXTENSIONS   = {"*.mp4", "*.avi", "*.ogv", "*.webm", "*.mkv", "*.mpg", "*.mpeg" };
+// Boost
+#include <boost/algorithm/string.hpp>
+
+const std::vector<std::wstring> Utils::MOVIE_FILE_EXTENSIONS   = { L".mp4", L".avi", L".ogv", L".webm", L".mkv", L".mpg", L".mpeg" };
 
 const QString Utils::TranscoderConfiguration::ROOT_DIRECTORY     = QObject::tr("Root directory");
 const QString Utils::TranscoderConfiguration::NUMBER_OF_THREADS  = QObject::tr("Number of threads");
@@ -42,36 +45,48 @@ const QString Utils::TranscoderConfiguration::SUBTITLE_EXTRACT   = QObject::tr("
 const QString Utils::TranscoderConfiguration::SUBTITLE_LANGUAGE  = QObject::tr("Preferred subtitle language");
 
 //-----------------------------------------------------------------
-bool Utils::isVideoFile(const QFileInfo &file)
+bool Utils::isVideoFile(const boost::filesystem::path &file)
 {
-  auto extension = file.absoluteFilePath().split('.').last().toLower();
+  if(boost::filesystem::is_regular_file(file))
+  {
+    const auto extension = boost::algorithm::to_lower_copy(file.extension().wstring());
 
-  return MOVIE_FILE_EXTENSIONS.contains("*." + extension);
+    return std::find(MOVIE_FILE_EXTENSIONS.cbegin(), MOVIE_FILE_EXTENSIONS.cend(), extension) != MOVIE_FILE_EXTENSIONS.cend();
+  }
+
+  return false;
 }
 
 //-----------------------------------------------------------------
-QList<QFileInfo> Utils::findFiles(const QDir initialDir,
-                                  const QStringList extensions,
-                                  bool with_subdirectories,
-                                  const std::function<bool (const QFileInfo &)> &condition)
+std::vector<boost::filesystem::path> Utils::findFiles(const boost::filesystem::path &initialDir,
+                                                      const std::vector<std::wstring> &extensions,
+                                                      bool with_subdirectories,
+                                                      const std::function<bool (const boost::filesystem::path &)> &condition)
 {
-  QList<QFileInfo> filesFound;
+  std::vector<boost::filesystem::path> filesFound;
 
-  auto startingDir = initialDir;
-  startingDir.setFilter(QDir::Files | QDir::NoDot | QDir::NoDotDot);
-  startingDir.setNameFilters(extensions);
-
-  auto flag = (with_subdirectories ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
-  QDirIterator it(startingDir, flag);
-  while (it.hasNext())
+  if(!initialDir.empty() && boost::filesystem::is_directory(initialDir))
   {
-    it.next();
-
-    auto info = it.fileInfo();
-
-    if(condition(info))
+    for(boost::filesystem::directory_entry &it: boost::filesystem::directory_iterator(initialDir))
     {
-      filesFound << info;
+      const auto name = it.path();
+      if(name.filename_is_dot() || name.filename_is_dot_dot()) continue;
+
+      if(with_subdirectories && boost::filesystem::is_directory(name))
+      {
+        auto files = findFiles(name, extensions, with_subdirectories, condition);
+
+        if(!files.empty()) std::copy(files.begin(), files.end(), std::back_inserter(filesFound));
+      }
+      else
+      {
+        const auto extension = boost::algorithm::to_lower_copy(name.extension().wstring());
+
+        if(std::find(extensions.cbegin(), extensions.cend(), extension) != extensions.cend() && condition(name))
+        {
+          filesFound.emplace_back(name);
+        }
+      }
     }
   }
 
@@ -97,7 +112,7 @@ void Utils::TranscoderConfiguration::load()
 {
   QSettings settings("Felix de las Pozas Alvarez", "VideoTranscoder");
 
-  m_root_directory    = settings.value(ROOT_DIRECTORY, QDir::currentPath()).toString();
+  m_root_directory    = boost::filesystem::path(settings.value(ROOT_DIRECTORY, QDir::currentPath()).toString().toStdWString());
   m_number_of_threads = settings.value(NUMBER_OF_THREADS, std::thread::hardware_concurrency() /2).toInt();
   m_videoCodec        = static_cast<VideoCodec>(settings.value(VIDEO_CODEC, 0).toInt());
   m_videoBitrate      = settings.value(VIDEO_BITRATE, 0).toInt();
@@ -117,7 +132,7 @@ void Utils::TranscoderConfiguration::save() const
 {
   QSettings settings("Felix de las Pozas Alvarez", "VideoTranscoder");
 
-  settings.setValue(ROOT_DIRECTORY, QDir{validDirectoryCheck(m_root_directory)}.absolutePath());
+  settings.setValue(ROOT_DIRECTORY, QString::fromStdWString(validDirectoryCheck(m_root_directory).wstring()));
   settings.setValue(NUMBER_OF_THREADS, m_number_of_threads);
   settings.setValue(VIDEO_CODEC, static_cast<int>(m_videoCodec));
   settings.setValue(VIDEO_BITRATE, m_videoBitrate);
@@ -132,7 +147,7 @@ void Utils::TranscoderConfiguration::save() const
 }
 
 //-----------------------------------------------------------------
-const QString& Utils::TranscoderConfiguration::rootDirectory() const
+const boost::filesystem::path& Utils::TranscoderConfiguration::rootDirectory() const
 {
   return m_root_directory;
 }
@@ -144,7 +159,7 @@ int Utils::TranscoderConfiguration::numberOfThreads() const
 }
 
 //-----------------------------------------------------------------
-void Utils::TranscoderConfiguration::setRootDirectory(const QString& path)
+void Utils::TranscoderConfiguration::setRootDirectory(const boost::filesystem::path& path)
 {
   m_root_directory = path;
 }
@@ -263,42 +278,19 @@ const bool Utils::TranscoderConfiguration::isValid() const
 }
 
 //-----------------------------------------------------------------
-const QString Utils::validDirectoryCheck(const QString& directory)
+boost::filesystem::path Utils::validDirectoryCheck(const boost::filesystem::path& directory)
 {
-  QStringList drivesPath;
-  for(auto path: QDir::drives())
+  auto current = directory;
+
+  while(!boost::filesystem::is_directory(current) && !current.empty() && !(current.root_directory() == current))
   {
-    drivesPath << path.absolutePath();
+    current = current.parent_path();
   }
 
-  // go to parent or home if the saved directory no longer exists.
-  QDir dir{directory};
-  while(!dir.exists() && !dir.isRoot() && !drivesPath.contains(dir.absolutePath()))
+  if(!boost::filesystem::is_directory(current) || current.empty() || current.root_directory() == current)
   {
-    // NOTE: dir.cdUp() doesn't work if the path is nested in more than two directories that
-    // don't exist, returning false.
-    auto path = dir.absolutePath();
-
-    bool isValidDrive = false;
-    for(auto drive: drivesPath)
-    {
-      if(path.startsWith(drive))
-      {
-        isValidDrive = true;
-        break;
-      }
-    }
-
-    if(!isValidDrive) break;
-
-    path = path.left(path.lastIndexOf('/'));
-    dir = QDir{path};
+    current = boost::filesystem::path(QDir::homePath().toStdWString());
   }
 
-  if(!dir.exists())
-  {
-    return QDir::homePath();
-  }
-
-  return QDir::toNativeSeparators(dir.absolutePath());
+  return current;
 }

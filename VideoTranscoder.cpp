@@ -50,7 +50,7 @@ VideoTranscoder::VideoTranscoder()
   m_threads->setMinimum(1);
   m_threads->setMaximum(std::thread::hardware_concurrency());
   m_threads->setValue(m_configuration.numberOfThreads());
-  m_directoryText->setText(m_configuration.rootDirectory());
+  m_directoryText->setText(QDir::toNativeSeparators(QString::fromStdWString(m_configuration.rootDirectory().wstring())));
   m_directoryButton->setCheckable(false);
 }
 
@@ -94,9 +94,11 @@ void VideoTranscoder::onConfigurationButtonPressed()
 //--------------------------------------------------------------------
 void VideoTranscoder::onStartButtonPressed()
 {
-  auto files = Utils::findFiles(m_directoryText->text(), Utils::MOVIE_FILE_EXTENSIONS);
+  const auto path = boost::filesystem::path(m_directoryText->text().toStdWString());
 
-  if(!files.isEmpty())
+  auto files = Utils::findFiles(path, Utils::MOVIE_FILE_EXTENSIONS);
+
+  if(!files.empty())
   {
     hide();
 
@@ -129,7 +131,8 @@ void VideoTranscoder::connectUI()
 //--------------------------------------------------------------------
 void VideoTranscoder::onDirectoryButtonPressed()
 {
-  QFileDialog fileBrowser{this, tr("Select root directory"), Utils::validDirectoryCheck(m_directoryText->text())};
+  auto dir = Utils::validDirectoryCheck(boost::filesystem::path(m_directoryText->text().toStdWString()));
+  QFileDialog fileBrowser{this, tr("Select root directory"), QString::fromStdWString(dir.wstring())};
   fileBrowser.setFileMode(QFileDialog::Directory);
   fileBrowser.setOption(QFileDialog::DontUseNativeDialog, false);
   fileBrowser.setOption(QFileDialog::ShowDirsOnly);
@@ -142,8 +145,8 @@ void VideoTranscoder::onDirectoryButtonPressed()
     QDir directory{newDirectory};
     if(directory.isReadable())
     {
-      m_configuration.setRootDirectory(newDirectory);
-      m_directoryText->setText(newDirectory);
+      m_configuration.setRootDirectory(boost::filesystem::path(newDirectory.toStdWString()));
+      m_directoryText->setText(QDir::toNativeSeparators(newDirectory));
     }
     else
     {

@@ -7,19 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>593</width>
-    <height>352</height>
+    <height>394</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>593</width>
-    <height>352</height>
+    <height>394</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>593</width>
-    <height>352</height>
+    <height>394</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -101,7 +101,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="label_4">
+          <widget class="QLabel" name="m_copyright">
            <property name="text">
             <string>Copyright (c) 2018 Félix de las Pozas Álvarez</string>
            </property>
@@ -406,6 +406,79 @@ Qt Framework</string>
            <widget class="QLabel" name="label_7">
             <property name="text">
              <string>&lt;a href=&quot;http://www.qt.io/&quot;&gt;http://www.qt.io/&lt;/a&gt;</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_9">
+            <property name="maximumSize">
+             <size>
+              <width>32</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="pixmap">
+             <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/boost.ico</pixmap>
+            </property>
+            <property name="scaledContents">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <widget class="QLabel" name="label_12">
+              <property name="font">
+               <font>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Boost Libraries</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="m_boostVersion">
+              <property name="text">
+               <string>version 1.72.0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>&lt;a href=&quot;http://www.boost.org/&quot;&gt;http://www.boost.org/&lt;/a&gt;</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>

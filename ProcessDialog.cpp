@@ -20,19 +20,15 @@
 // Project
 #include <ProcessDialog.h>
 #include <Worker.h>
-#include <Workers/VP8Worker.h>
-#include <Workers/VP9Worker.h>
-#include <Workers/H264Worker.h>
-#include <Workers/H265Worker.h>
 
 // Qt
 #include <QEvent>
 #include <QKeyEvent>
 
 //--------------------------------------------------------------------
-ProcessDialog::ProcessDialog(const QList<QFileInfo>& files, const Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
-: QDialog{parent, flags}
-, m_files{files}
+ProcessDialog::ProcessDialog(const std::vector<boost::filesystem::path> &files, const Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
+: QDialog(parent, flags)
+, m_files(files)
 , m_configuration{config}
 {
   setupUi(this);
@@ -60,7 +56,7 @@ ProcessDialog::ProcessDialog(const QList<QFileInfo>& files, const Utils::Transco
 
   auto initial_jobs = m_files.size();
 
-  auto bars_num = std::min(m_max_workers, initial_jobs);
+  auto bars_num = std::min(m_max_workers, static_cast<int>(initial_jobs));
   for(int i = 0; i < bars_num; ++i)
   {
     auto bar = new QProgressBar();
@@ -214,7 +210,8 @@ void ProcessDialog::create_threads()
 //-----------------------------------------------------------------
 void ProcessDialog::create_transcoder()
 {
-  auto fs_handle = m_files.takeFirst();
+  auto fs_handle = m_files.cbegin();
+  const auto filename = *fs_handle;
 
   ++m_num_workers;
 
@@ -223,23 +220,23 @@ void ProcessDialog::create_transcoder()
   switch(m_configuration.videoCodec())
   {
     case Utils::TranscoderConfiguration::VideoCodec::H264:
-      worker = new H264Worker(fs_handle, m_configuration);
+      worker = new H264Worker(filename, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::H265:
-      worker = new H265Worker(fs_handle, m_configuration);
+      worker = new H265Worker(filename, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::VP8:
-      worker = new VP8Worker(fs_handle, m_configuration);
+      worker = new VP8Worker(filename, m_configuration);
       break;
     case Utils::TranscoderConfiguration::VideoCodec::VP9:
-      worker = new VP9Worker(fs_handle, m_configuration);
+      worker = new VP9Worker(filename, m_configuration);
       break;
     default:
       Q_ASSERT(false);
       break;
   }
 
-  auto message = QString("%1").arg(fs_handle.absoluteFilePath().split('/').last());
+  auto message = QString::fromStdWString(filename.filename().wstring());
   assign_bar_to_worker(worker, message);
 
   worker->start();
