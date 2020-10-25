@@ -51,12 +51,19 @@ class ConfigurationDialog
     {}
 
     virtual void accept() override;
+    virtual void reject() override;
 
   private slots:
     /** \brief Helper method to fill the combo boxes with the values according to configuration or user interaction.
      *
      */
-    void fillComboBoxes();
+    void updateFormatComboBoxes();
+
+    /** \brief Updates the application theme.
+     * \param[in] index Index selected in the theme comboBox.
+     *
+     */
+    void changeTheme(int index);
 
   private:
     Utils::TranscoderConfiguration &m_configuration; /** application configuration. */

@@ -29,8 +29,8 @@
 // libvpx
 #include <vpx_version.h>
 
-// Boost
-#include <boost/version.hpp>
+// libav
+#include <avversion.h>
 
 const QString AboutDialog::VERSION = QString("version 1.0.0");
 
@@ -49,12 +49,9 @@ AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
   m_version->setText(VERSION);
 
   m_qtVersion->setText(tr("version %1").arg(qVersion()));
-  m_libavVersion->setText(tr("version 12")); // does not provide version macro.
+  m_libavVersion->setText(tr("version %1").arg(LIBAV_VERSION));
   m_libvpxVersion->setText(tr("version %1.%2.%3").arg(VERSION_MAJOR).arg(VERSION_MINOR).arg(VERSION_PATCH));
 
-  const auto boostVersion = QString::number(BOOST_VERSION / 100000) + "." + QString::number(BOOST_VERSION / 100 % 1000) + "." + QString::number(BOOST_VERSION % 100);
-  m_boostVersion->setText(tr("version %1").arg(boostVersion));
-
   auto now = QDateTime::currentDateTime();
-  m_copyright->setText(tr("Copyright 2018-%1 Félix de las Pozas Álvarez").arg(now.date().year()));
+  m_copyright->setText(tr("Copyright %1 Félix de las Pozas Álvarez").arg(now.date().year()));
 }

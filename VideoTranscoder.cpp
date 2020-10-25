@@ -34,6 +34,7 @@
 
 // C++
 #include <thread>
+#include <filesystem>
 
 const QString OUTPUT_DIRECTORY  = "Output directory";
 const QString PROCESSORS_NUMBER = "Processors number";
@@ -46,6 +47,8 @@ VideoTranscoder::VideoTranscoder()
   connectUI();
 
   m_configuration.load();
+
+  Utils::setApplicationTheme(m_configuration.visualTheme());
 
   m_threads->setMinimum(1);
   m_threads->setMaximum(std::thread::hardware_concurrency());
@@ -94,7 +97,7 @@ void VideoTranscoder::onConfigurationButtonPressed()
 //--------------------------------------------------------------------
 void VideoTranscoder::onStartButtonPressed()
 {
-  const auto path = boost::filesystem::path(m_directoryText->text().toStdWString());
+  const auto path = std::filesystem::path(m_directoryText->text().toStdWString());
 
   auto files = Utils::findFiles(path, Utils::MOVIE_FILE_EXTENSIONS);
 
@@ -131,7 +134,7 @@ void VideoTranscoder::connectUI()
 //--------------------------------------------------------------------
 void VideoTranscoder::onDirectoryButtonPressed()
 {
-  auto dir = Utils::validDirectoryCheck(boost::filesystem::path(m_directoryText->text().toStdWString()));
+  auto dir = Utils::validDirectoryCheck(std::filesystem::path(m_directoryText->text().toStdWString()));
   QFileDialog fileBrowser{this, tr("Select root directory"), QString::fromStdWString(dir.wstring())};
   fileBrowser.setFileMode(QFileDialog::Directory);
   fileBrowser.setOption(QFileDialog::DontUseNativeDialog, false);
@@ -145,7 +148,7 @@ void VideoTranscoder::onDirectoryButtonPressed()
     QDir directory{newDirectory};
     if(directory.isReadable())
     {
-      m_configuration.setRootDirectory(boost::filesystem::path(newDirectory.toStdWString()));
+      m_configuration.setRootDirectory(std::filesystem::path(newDirectory.toStdWString()));
       m_directoryText->setText(QDir::toNativeSeparators(newDirectory));
     }
     else

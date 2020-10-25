@@ -21,34 +21,37 @@
 #include <ProcessDialog.h>
 #include <Worker.h>
 
+// C++
+#include <iostream>
+
 // Qt
 #include <QEvent>
 #include <QKeyEvent>
 #include <QtWinExtras/QWinTaskbarProgress>
 
 //--------------------------------------------------------------------
-ProcessDialog::ProcessDialog(const std::vector<boost::filesystem::path> &files, const Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
+ProcessDialog::ProcessDialog(const std::vector<std::filesystem::path> &files, const Utils::TranscoderConfiguration& config, QWidget* parent, Qt::WindowFlags flags)
 : QDialog        (parent, flags)
 , m_files        (files)
+, m_num_workers  {0}
 , m_configuration{config}
+, m_errorsCount  {0}
+, m_finished_transcoding{false}
 , m_taskBarButton{nullptr}
 {
   setupUi(this);
 
   register_av_lock_manager();
 
-  connect(m_cancelButton, SIGNAL(clicked()),
-          this,           SLOT(stop()));
-
-  connect(m_clipboard,    SIGNAL(pressed()),
-          this,           SLOT(onClipboardPressed()));
+  connect(m_cancelButton, SIGNAL(clicked()), this, SLOT(stop()));
+  connect(m_clipboard,    SIGNAL(pressed()), this, SLOT(onClipboardPressed()));
 
   setWindowFlags(windowFlags() & ~(Qt::WindowContextHelpButtonHint) & Qt::WindowMaximizeButtonHint);
 
   m_log->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
 
-  m_max_workers = m_configuration.numberOfThreads();
-  auto total_jobs = m_files.size();
+  const auto max_workers = m_configuration.numberOfThreads();
+  int total_jobs = m_files.size();
 
   m_globalProgress->setMinimum(0);
   m_globalProgress->setMaximum(total_jobs);
@@ -56,10 +59,9 @@ ProcessDialog::ProcessDialog(const std::vector<boost::filesystem::path> &files, 
   auto boxLayout = new QVBoxLayout();
   m_workers->setLayout(boxLayout);
 
-  auto initial_jobs = m_files.size();
+  auto initial_jobs = std::min(total_jobs, max_workers);
 
-  auto bars_num = std::min(m_max_workers, static_cast<int>(initial_jobs));
-  for(int i = 0; i < bars_num; ++i)
+  for(int i = 0; i < initial_jobs; ++i)
   {
     auto bar = new QProgressBar();
     bar->setAlignment(Qt::AlignCenter);
@@ -126,6 +128,8 @@ void ProcessDialog::log_information(const QString &message)
 //-----------------------------------------------------------------
 void ProcessDialog::stop()
 {
+  disconnect(m_cancelButton, SIGNAL(clicked()), this, SLOT(stop()));
+
   for(auto worker: m_progress_bars.values())
   {
     if(worker != nullptr)
@@ -134,6 +138,9 @@ void ProcessDialog::stop()
       worker->wait();
     }
   }
+
+  m_cancelButton->setText(tr("Exit"));
+  connect(m_cancelButton, SIGNAL(clicked()), this, SLOT(close()));
 }
 
 //-----------------------------------------------------------------
@@ -144,14 +151,9 @@ void ProcessDialog::increment_global_progress()
   auto worker = qobject_cast<Worker *>(sender());
   Q_ASSERT(worker);
 
-  disconnect(worker, SIGNAL(error_message(const QString &)),
-             this,      SLOT(log_error(const QString &)));
-
-  disconnect(worker, SIGNAL(information_message(const QString &)),
-             this,      SLOT(log_information(const QString &)));
-
-  disconnect(worker, SIGNAL(finished()),
-             this,      SLOT(increment_global_progress()));
+  disconnect(worker, SIGNAL(error_message(const QString &)),       this, SLOT(log_error(const QString &)));
+  disconnect(worker, SIGNAL(information_message(const QString &)), this, SLOT(log_information(const QString &)));
+  disconnect(worker, SIGNAL(finished()),                           this, SLOT(increment_global_progress()));
 
   if(!worker->has_been_cancelled())
   {
@@ -205,7 +207,7 @@ void ProcessDialog::create_threads()
 {
   QMutexLocker lock(&m_mutex);
 
-  while(m_num_workers < m_max_workers && m_files.size() > 0)
+  while(m_num_workers < m_configuration.numberOfThreads() && m_files.size() > 0)
   {
     create_transcoder();
   }
@@ -214,8 +216,8 @@ void ProcessDialog::create_threads()
 //-----------------------------------------------------------------
 void ProcessDialog::create_transcoder()
 {
-  auto fs_handle = m_files.cbegin();
-  const auto filename = *fs_handle;
+  const std::filesystem::path filename = m_files.front();
+  m_files.erase(m_files.cbegin());
 
   ++m_num_workers;
 
@@ -249,14 +251,9 @@ void ProcessDialog::create_transcoder()
 //-----------------------------------------------------------------
 void ProcessDialog::assign_bar_to_worker(Worker* worker, const QString& message)
 {
-  connect(worker, SIGNAL(error_message(const QString &)),
-          this,      SLOT(log_error(const QString &)));
-
-  connect(worker, SIGNAL(information_message(const QString &)),
-          this,      SLOT(log_information(const QString &)));
-
-  connect(worker, SIGNAL(finished()),
-          this,      SLOT(increment_global_progress()));
+  connect(worker, SIGNAL(error_message(const QString &)),       this, SLOT(log_error(const QString &)));
+  connect(worker, SIGNAL(information_message(const QString &)), this, SLOT(log_information(const QString &)));
+  connect(worker, SIGNAL(finished()),                           this, SLOT(increment_global_progress()));
 
   for(auto bar: m_progress_bars.keys())
   {
@@ -267,8 +264,7 @@ void ProcessDialog::assign_bar_to_worker(Worker* worker, const QString& message)
       bar->setEnabled(true);
       bar->setFormat(message);
 
-      connect(worker, SIGNAL(progress(int)),
-              bar,       SLOT(setValue(int)));
+      connect(worker, SIGNAL(progress(int)), bar, SLOT(setValue(int)));
 
       break;
     }
@@ -306,7 +302,7 @@ int ProcessDialog::lock_manager(void **mutex, AVLockOp operation)
   switch (operation)
   {
     case AV_LOCK_CREATE:
-      *mutex =  new QMutex();
+      *mutex = new QMutex();
       return 0;
     case AV_LOCK_OBTAIN:
       passed_mutex = reinterpret_cast<QMutex *>(*mutex);

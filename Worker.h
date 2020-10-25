@@ -51,7 +51,11 @@ class Worker
      * \param[in] config Configuration struct reference.
      *
      */
-    explicit Worker(const boost::filesystem::path &source_info, const Utils::TranscoderConfiguration &config);
+    explicit Worker(const std::filesystem::path &source_info, const Utils::TranscoderConfiguration &config);
+
+    /** \brief Worker class virtual destructor.
+     *
+     */
     virtual ~Worker()
     {}
 
@@ -133,8 +137,8 @@ class Worker
     AVCodec                              *m_audio_coder;              /** output audio decoder.                  */
     AVCodec                              *m_video_coder;              /** output video decoder.                  */
     AVPacket                             *m_packet;                   /** libav packet (encoded data).           */
-    const boost::filesystem::path         m_source_info;              /** source file information.               */
-    const boost::filesystem::path         m_source_path;              /** source file path.                      */
+    const std::filesystem::path           m_source_info;              /** source file information.               */
+    const std::filesystem::path           m_source_path;              /** source file path.                      */
 
     static const int s_io_buffer_size = 16384 + AV_INPUT_BUFFER_PADDING_SIZE;
 
@@ -205,6 +209,7 @@ class Worker
     virtual bool create_output();
 
     Worker(const Worker &) = delete;
+    Worker(Worker &&) = delete;
     Worker& operator=(const Worker&) = delete;
 
     bool            m_fail;         /** true on process success, false otherwise.            */
@@ -227,7 +232,7 @@ class H264Worker
      * \param[in] config Configuration struct reference.
      *
      */
-    explicit H264Worker(const boost::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
+    explicit H264Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
     : Worker(sourceInfo, config)
     {};
 
@@ -261,7 +266,7 @@ class H265Worker
      * \param[in] config Configuration struct reference.
      *
      */
-    explicit H265Worker(const boost::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
+    explicit H265Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
     : Worker(sourceInfo, config)
     {};
 
@@ -295,7 +300,7 @@ class VP8Worker
      * \param[in] config Configuration struct reference.
      *
      */
-    explicit VP8Worker(const boost::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
+    explicit VP8Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
     : Worker(sourceInfo, config)
     {};
 
@@ -329,7 +334,7 @@ class VP9Worker
      * \param[in] config Configuration struct reference.
      *
      */
-    explicit VP9Worker(const boost::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
+    explicit VP9Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
     : Worker(sourceInfo, config)
     {};
 

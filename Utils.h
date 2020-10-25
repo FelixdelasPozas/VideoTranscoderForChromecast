@@ -30,7 +30,7 @@
 #include <QMutex>
 
 // Boost
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace Utils
 {
@@ -41,14 +41,14 @@ namespace Utils
    * \param[in] file file path.
    *
    */
-  bool isVideoFile(const boost::filesystem::path &file);
+  bool isVideoFile(const std::filesystem::path &file);
 
   /** \brief Checks the given directory for existance and readability. If the directory is
    *  not readable or doesn't exist it will try the parent recursively until returning a valid
    *  path or the user home directory.
    * \param[in] directory path.
    */
-  boost::filesystem::path validDirectoryCheck(const boost::filesystem::path &directory);
+  std::filesystem::path validDirectoryCheck(const std::filesystem::path &directory);
 
   /** \brief Returns the files in the specified directory tree that has the specified extensions.
    * \param[in] rootDir starting directory.
@@ -58,10 +58,16 @@ namespace Utils
    * \param[in] condition additional condition that the files must comply with.
    *
    */
-  std::vector<boost::filesystem::path> findFiles(const boost::filesystem::path &rootDirectory,
-                                                 const std::vector<std::wstring> &extensions,
-                                                 bool with_subdirectories = true,
-                                                 const std::function<bool (const boost::filesystem::path &)> &condition = Utils::isVideoFile);
+  std::vector<std::filesystem::path> findFiles(const std::filesystem::path &rootDirectory,
+                                               const std::vector<std::wstring> &extensions,
+                                               bool with_subdirectories = true,
+                                               const std::function<bool (const std::filesystem::path &)> &condition = Utils::isVideoFile);
+
+  /** \brief Sets the visual theme of the application.
+   * \param[in] theme Possible values: Light/Dark
+   *
+   */
+  void setApplicationTheme(const QString &theme);
 
   /** \class TranscoderConfiguration
    * \brief Implements the configuration storage/management.
@@ -92,13 +98,13 @@ namespace Utils
       /** \brief Returns the root directory to start searching for files.
        *
        */
-      const boost::filesystem::path &rootDirectory() const;
+      std::filesystem::path rootDirectory() const;
 
       /** \brief Sets the root directory to start searching for files to transcode.
        * \param[in] path root directory path.
        *
        */
-      void setRootDirectory(const boost::filesystem::path &path);
+      void setRootDirectory(const std::filesystem::path &path);
 
       /** \brief Returns the number of simultaneous threads in the transcoding process.
        *
@@ -114,7 +120,7 @@ namespace Utils
       /** \brief Returns the output file video codec.
        *
        */
-      const VideoCodec videoCodec() const;
+      VideoCodec videoCodec() const;
 
       /** \brief Sets the output file video codec.
        * \param[in] codec Video codec identifier.
@@ -125,7 +131,7 @@ namespace Utils
       /** \brief Returns the output file audio codec.
        *
        */
-      const AudioCodec audioCodec() const;
+      AudioCodec audioCodec() const;
 
       /** \brief Sets the output file audio codec.
        * \param[in] codec Audio codec identifier.
@@ -136,7 +142,7 @@ namespace Utils
       /** \brief Returns the output file video bitrate.
        *
        */
-      const int videoBitrate() const;
+      int videoBitrate() const;
 
       /** \brief Sets the output file video bitrate.
        * \param[in] bitrate Integer value.
@@ -147,7 +153,7 @@ namespace Utils
       /** \brief Returns the output file audio bitrate.
        *
        */
-      const int audioBitrate() const;
+      int audioBitrate() const;
 
       /** \brief Sets the output file audio bitrate.
        *
@@ -157,7 +163,7 @@ namespace Utils
       /** \brief Returns the number of audio channels in the output file.
        *
        */
-      const int audioChannelsNum() const;
+      int audioChannelsNum() const;
 
       /** \brief Sets the output file number of audio channels.
        * \param[in] channelsNum Number of channels [2,7].
@@ -168,7 +174,7 @@ namespace Utils
       /** \brief Returns true if the video and audio codec pair is valid.
        *
        */
-      const bool isValid() const;
+      bool isValid() const;
 
       /** \brief Sets the preferred language for audio transcoding.
        * \param[in] language Language identifier.
@@ -179,7 +185,7 @@ namespace Utils
       /** \brief Returns the preferred language for audio transcoding.
        *
        */
-      const Language preferredAudioLanguage() const;
+      Language preferredAudioLanguage() const;
 
       /** \brief Sets if the subtitles must be extracted if embedded in the video file.
        * \param[in] value True to extract, false otherwise.
@@ -190,7 +196,7 @@ namespace Utils
       /** \brief Returns true if the subtitles are to be extracted from the video file if present.
        *
        */
-      const bool extractSubtitles() const;
+      bool extractSubtitles() const;
 
       /** \brief Sets the preferred subtitle language to extract.
        * \param[in] language Language identifier.
@@ -201,19 +207,31 @@ namespace Utils
       /** \brief Returns the preferred subtitle language to extract.
        *
        */
-      const Language preferredSubtitleLanguage() const;
+      Language preferredSubtitleLanguage() const;
+
+      /** \brief Sets the application visual theme. Possible values of 'theme' are "Light" and "Dark".
+       * \param[in] theme Light/Dark values.
+       *
+       */
+      void setVisualTheme(const QString &theme);
+
+      /** \brief Returns the visual theme of the application.
+       *
+       */
+      QString visualTheme() const;
 
     private:
-      boost::filesystem::path m_root_directory;    /** last used directory.                                 */
-      int                     m_number_of_threads; /** number of threads to use.                            */
-      VideoCodec              m_videoCodec;        /** output video codec.                                  */
-      int                     m_videoBitrate;      /** output video bitrate.                                */
-      AudioCodec              m_audioCodec;        /** output audio codec.                                  */
-      int                     m_audioBitrate;      /** output audio bitrate.                                */
-      Language                m_outputLanguage;    /** preferred audio/subtitles language.                  */
-      bool                    m_extractSubtitles;  /** true to extract embedded subtitles, false otherwise. */
-      int                     m_audioChannels;     /** output audio number of channels.                     */
-      Language                m_subtitleLanguage;  /** Subtitle language to extract.                        */
+      std::filesystem::path m_root_directory;    /** last used directory.                                 */
+      int                   m_number_of_threads; /** number of threads to use.                            */
+      VideoCodec            m_videoCodec;        /** output video codec.                                  */
+      int                   m_videoBitrate;      /** output video bitrate.                                */
+      AudioCodec            m_audioCodec;        /** output audio codec.                                  */
+      int                   m_audioBitrate;      /** output audio bitrate.                                */
+      Language              m_outputLanguage;    /** preferred audio/subtitles language.                  */
+      bool                  m_extractSubtitles;  /** true to extract embedded subtitles, false otherwise. */
+      int                   m_audioChannels;     /** output audio number of channels.                     */
+      Language              m_subtitleLanguage;  /** Subtitle language to extract.                        */
+      bool                  m_theme;             /** true for light theme, false for dark theme.          */
 
       /** settings key strings. */
       static const QString ROOT_DIRECTORY;
@@ -226,6 +244,7 @@ namespace Utils
       static const QString AUDIO_LANGUAGE;
       static const QString SUBTITLE_EXTRACT;
       static const QString SUBTITLE_LANGUAGE;
+      static const QString THEME;
   };
 }
 

@@ -8,6 +8,6 @@
 	<file>qt.ico</file>
 	<file>clipboard.ico</file>
 	<file>webm.ico</file>
-	<file>boost.ico</file>
+	<file>chromecast.svg</file>
   </qresource>
 </RCC>

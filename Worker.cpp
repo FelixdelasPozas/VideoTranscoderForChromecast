@@ -36,7 +36,7 @@ const QList<int> Worker::VALID_AUDIO_CODECS = { AV_CODEC_ID_MP3, AV_CODEC_ID_AAC
 const std::wstring SUBTITLE_EXTENSION = L".srt";
 
 //--------------------------------------------------------------------
-Worker::Worker(const boost::filesystem::path &source_info, const Utils::TranscoderConfiguration &config)
+Worker::Worker(const std::filesystem::path &source_info, const Utils::TranscoderConfiguration &config)
 : m_configuration           {config}
 , m_audio_decoder           {nullptr}
 , m_video_decoder           {nullptr}
@@ -92,6 +92,8 @@ void Worker::run()
     {
       if(create_output())
       {
+        std::cout << "passes third check" << std::endl;
+
         return;
 //        int value = 0;
 //        while(0 == (value = av_read_frame(m_input_context, m_packet)) && !has_been_cancelled())
@@ -215,6 +217,12 @@ bool Worker::init_libav()
   avioContext->write_flag = 0;
 
   m_input_context = avformat_alloc_context();
+  if(!m_input_context)
+  {
+    emit error_message(QString("Couldn't allocate input context for file: '%1'.").arg(source_name));
+    return false;
+  }
+
   m_input_context->pb = avioContext;
   m_input_context->flags |= AVFMT_FLAG_CUSTOM_IO;
 
@@ -241,26 +249,23 @@ bool Worker::init_libav()
     {
       auto lang = av_dict_get(m_input_context->streams[id]->metadata, "language", nullptr, 0);
 
-      if(!lang)
+      if(!lang && m_audio_stream_id == AVERROR_STREAM_NOT_FOUND)
       {
         m_audio_stream_id = id;
         break;
       }
 
-      if(strcmp(lang->value, "spa"))
+      if(lang)
       {
-        m_audio_stream_id = id;
-        if (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::SPANISH)
+        if((strcmp(lang->value, "spa") == 0) && (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::SPANISH))
         {
+          m_audio_stream_id = id;
           break;
         }
-      }
 
-      if(strcmp(lang->value, "eng"))
-      {
-        m_audio_stream_id = id;
-        if (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH)
+        if((strcmp(lang->value, "eng") == 0) && (m_configuration.preferredAudioLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH))
         {
+          m_audio_stream_id = id;
           break;
         }
       }
@@ -324,33 +329,30 @@ bool Worker::init_libav()
       {
         auto lang = av_dict_get(m_input_context->streams[id]->metadata, "language", nullptr, 0);
 
-        if(!lang)
+        if(!lang && m_subtitle_stream_id == AVERROR_STREAM_NOT_FOUND)
         {
           m_audio_stream_id = id;
           break;
         }
 
-        if(strcmp(lang->value, "spa"))
+        if(lang)
         {
-          m_subtitle_stream_id = id;
-          if (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::SPANISH)
+          if((strcmp(lang->value, "spa") == 0) && (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::SPANISH))
           {
+            m_subtitle_stream_id = id;
             break;
           }
-        }
 
-        if(strcmp(lang->value, "eng"))
-        {
-          m_subtitle_stream_id = id;
-          if (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH)
+          if((strcmp(lang->value, "eng") == 0) && (m_configuration.preferredSubtitleLanguage() == Utils::TranscoderConfiguration::Language::ENGLISH))
           {
+            m_subtitle_stream_id = id;
             break;
           }
         }
       }
     }
 
-    if(m_subtitle_stream_id != -1)
+    if(m_subtitle_stream_id != AVERROR_STREAM_NOT_FOUND)
     {
       av_find_best_stream(m_input_context, AVMEDIA_TYPE_SUBTITLE, m_subtitle_stream_id, -1, &m_subtitle_decoder, 0);
 
@@ -469,6 +471,8 @@ bool Worker::create_output()
 {
   auto filename = QString::fromStdWString(m_source_info.stem().wstring() + outputExtension());
 
+  std::cout << "enter create output: " << filename.toStdString() << std::endl;
+
   auto format = av_guess_format(nullptr, filename.toStdString().c_str(), nullptr);
 
   if(!format) return false;
@@ -477,7 +481,11 @@ bool Worker::create_output()
 
   if(!m_output_context) return false;
 
-  m_audio_coder = avcodec_find_encoder(audioCodecId());
+  m_output_context->oformat = format;
+  m_output_context->oformat->audio_codec = audioCodecId();
+  m_output_context->oformat->video_codec = videoCodecId();
+
+  m_audio_coder = avcodec_find_encoder(m_output_context->oformat->audio_codec);
 
   if(!m_audio_coder) return false;
 
@@ -488,7 +496,7 @@ bool Worker::create_output()
   // some formats want stream headers to be separate
   if (format->flags & AVFMT_GLOBALHEADER) m_audio_coder_context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
-  m_video_coder = avcodec_find_encoder(videoCodecId());
+  m_video_coder = avcodec_find_encoder(m_output_context->oformat->video_codec);
 
   if(!m_video_coder) return false;
 
@@ -499,8 +507,9 @@ bool Worker::create_output()
   // some formats want stream headers to be separate
   if (format->flags & AVFMT_GLOBALHEADER) m_video_coder_context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
-  if(avcodec_parameters_to_context(m_audio_coder_context, m_input_context->streams[m_audio_stream_id]->codecpar) < 0) return false;
-  if(avcodec_parameters_to_context(m_video_coder_context, m_input_context->streams[m_video_stream_id]->codecpar) < 0) return false;
+//  if(avcodec_parameters_to_context(m_audio_coder_context, m_input_context->streams[m_audio_stream_id]->codecpar) < 0) return false;
+  m_audio_coder_context->channels = m_configuration.audioChannelsNum();
+//  if(avcodec_parameters_to_context(m_video_coder_context, m_input_context->streams[m_video_stream_id]->codecpar) < 0) return false;
 
   m_audioStream = avformat_new_stream(m_output_context, m_audio_coder);
 
@@ -510,8 +519,10 @@ bool Worker::create_output()
 
   if(!m_videoStream) return false;
 
+  std::cout << "t1" << std::endl;
   if(avcodec_open2(m_audio_coder_context, m_audio_coder, nullptr) < 0) return false;
   if(avcodec_open2(m_video_coder_context, m_video_coder, nullptr) < 0) return false;
+  std::cout << "t2" << std::endl;
 
   /* open the output file, if needed */
   if (!(format->flags & AVFMT_NOFILE))
@@ -520,6 +531,8 @@ bool Worker::create_output()
   }
 
   if(avformat_write_header(m_output_context, nullptr) < 0) return false;
+
+  std::cout << "exit create output" << std::endl;
 
   return true;
 }

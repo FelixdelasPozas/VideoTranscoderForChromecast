@@ -9,23 +9,18 @@ Video Transcoder For Chromecast
 - [Repository information](#repository-information)
 
 # Description
-Simple transcoder program to transcode video files to formats supported by Chromescast devices.  
+Simple transcoder program to transcode video files to formats supported by Chromescast devices using the NVidia NVENC encoder.   
 
 ** TODO **
 
 ## Options
 The tool can be configured:
-* the output files can be renamed according to the input file metadata and the specified reformatting options.
-* large audio files can be splitted into tracks if a CUE sheet is provided in the same folder of the audio file.
-* ID3v1/ID3v2 tags can be removed if the input file is already in MP3 format.
-* can create M3U playlists in the input folders after the files have been converted.
-* the cover picture of the input file, if present in the file metadata, can be extracted to disk. 
+* The output codecs are H.264, HEVC (H.265), VP8 and VP9. Only the first two are hardware accelerated using NVENC.
+* Extract subtitle files from the input files with language preferences.
+* Select output audio language by preferences.
 
 ## Input file formats
-The following file formats are detected and supported by the tool as input files:
-* **Audio formats**: flac, ogg, ape, wav, wma, m4a, voc, wv and mp3.
-* **Video formats**: mp4, avi, ogv and webm.
-* **Module formats**: 669, amf, apun, dsm, far, gdm, it, imf, mod, med, mtm, okt, s3m, stm, stx, ult, uni, xt and xm.
+The input videos recognized by the tool are the same recognized by libav (ffmpeg) library. 
 
 # Compilation requirements
 ## To build the tool:
@@ -34,11 +29,8 @@ The following file formats are detected and supported by the tool as input files
 
 ## External dependencies:
 The following libraries are required:
-* [lame](http://lame.sourceforge.net/) - Lame Ain't An Mp3 Encoder.
 * [libav](https://libav.org/) - Open source audio and video processing tools.
-* [libcue](https://github.com/lipnitsk/libcue) - CUE sheet parser library.
-* [TagLib](https://taglib.github.io/) - TagLib Audio Meta-Data Library.
-* [libopenmt](http://lib.openmpt.org/) - OpenMPT based module player library.
+* [libvpx](https://www.webmproject.org/) - WebM project VPx codec implementation. 
 * [Qt opensource framework](http://www.qt.io/).
 
 # Install

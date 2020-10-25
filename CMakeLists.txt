@@ -7,16 +7,15 @@ set (VIDEO_TRANSCODER_VERSION_MAJOR 1)
 set (VIDEO_TRANSCODER_VERSION_MINOR 0)
 set (VIDEO_TRANSCODER_VERSION_PATCH 0)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
-
-# Manually setting Boost because the CMake script is pure shit
-set(Boost_INCLUDE_DIR "D:/Desarrollo/Bibliotecas/boost_1_72_0")
-set(Boost_LIBRARIES "D:/Desarrollo/Bibliotecas/boost_1_72_0/bin.v2/libs/program_options/build/gcc-8.2.0/release/link-static/threading-multi/visibility-hidden/libboost_program_options-mgw82-mt-x64-1_72.a"
-                    "D:/Desarrollo/Bibliotecas/boost_1_72_0/bin.v2/libs/filesystem/build/gcc-8.2.0/release/link-static/threading-multi/visibility-hidden/libboost_filesystem-mgw82-mt-x64-1_72.a")
 
 # Find the QtWidgets library
 find_package(Qt5 COMPONENTS Widgets WinExtras)
@@ -61,15 +60,14 @@ include_directories(
   ${LIBAV_INCLUDE_DIR}
   ${LIBVPX_INCLUDE_DIR}
   ${ZLIB_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIR}
   )
 
-set(CMAKE_CXX_FLAGS " -Wall -Wno-deprecated -std=c++11 -mwindows -m64")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
+set(CMAKE_CXX_FLAGS " -Wall -Wno-deprecated -std=c++17 -mwindows -m64")
 
 # Add Qt Resource files
 qt5_add_resources(RESOURCES
   rsc/resources.qrc
+  rsc/darktheme/style.qrc
 )
 
 qt5_wrap_ui(CORE_UI
@@ -99,7 +97,6 @@ SET_SOURCE_FILES_PROPERTIES(${CORE_SOURCES} PROPERTIES OBJECT_DEPENDS "${CORE_UI
 set(CORE_EXTERNAL_LIBS
   Qt5::Widgets
   Qt5::WinExtras
-  ${Boost_LIBRARIES}
   ${LIBAV_LIBRARIES}
   ${LIBVPX_LIBRARY}
   ${ZLIB_LIBRARY}

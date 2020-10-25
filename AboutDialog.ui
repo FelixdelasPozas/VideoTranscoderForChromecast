@@ -6,20 +6,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>593</width>
-    <height>394</height>
+    <width>648</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>593</width>
-    <height>394</height>
+    <width>648</width>
+    <height>420</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>593</width>
-    <height>394</height>
+    <width>648</width>
+    <height>420</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -29,7 +29,7 @@
    <iconset resource="rsc/resources.qrc">
     <normaloff>:/VideoTranscoder/application.ico</normaloff>:/VideoTranscoder/application.ico</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,1,0">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
@@ -59,7 +59,7 @@
           <string/>
          </property>
          <property name="pixmap">
-          <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/application.ico</pixmap>
+          <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/chromecast.svg</pixmap>
          </property>
          <property name="scaledContents">
           <bool>true</bool>
@@ -425,9 +425,15 @@ Qt Framework</string>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <widget class="QLabel" name="label_9">
+           <widget class="QLabel" name="label_4">
+            <property name="minimumSize">
+             <size>
+              <width>32</width>
+              <height>32</height>
+             </size>
+            </property>
             <property name="maximumSize">
              <size>
               <width>32</width>
@@ -437,18 +443,12 @@ Qt Framework</string>
             <property name="text">
              <string/>
             </property>
-            <property name="pixmap">
-             <pixmap resource="rsc/resources.qrc">:/VideoTranscoder/boost.ico</pixmap>
-            </property>
-            <property name="scaledContents">
-             <bool>true</bool>
-            </property>
            </widget>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_6">
+           <layout class="QVBoxLayout" name="verticalLayout_8">
             <item>
-             <widget class="QLabel" name="label_12">
+             <widget class="QLabel" name="label_16">
               <property name="font">
                <font>
                 <weight>75</weight>
@@ -456,7 +456,7 @@ Qt Framework</string>
                </font>
               </property>
               <property name="text">
-               <string>Boost Libraries</string>
+               <string>QDarkStyleSheet</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -464,9 +464,9 @@ Qt Framework</string>
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="m_boostVersion">
+             <widget class="QLabel" name="label_17">
               <property name="text">
-               <string>version 1.72.0</string>
+               <string>version 2.6</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignCenter</set>
@@ -476,9 +476,9 @@ Qt Framework</string>
            </layout>
           </item>
           <item>
-           <widget class="QLabel" name="label_8">
+           <widget class="QLabel" name="label_15">
             <property name="text">
-             <string>&lt;a href=&quot;http://www.boost.org/&quot;&gt;http://www.boost.org/&lt;/a&gt;</string>
+             <string>&lt;a href=&quot;https://github.com/ColinDuquesnoy/QDarkStyleSheet&quot;&gt;https://github.com/ColinDuquesnoy/QDarkStyleSheet&lt;/a&gt;</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -496,13 +496,20 @@ Qt Framework</string>
     </layout>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="maximumSize">
-      <size>
-       <width>575</width>
-       <height>23</height>
-      </size>
+    <widget class="QLabel" name="label_18">
+     <property name="text">
+      <string>Some icons courtesy of &lt;a href=&quot;https://www.flaticon.es/&quot; title=&quot;Flaticon&quot;&gt; www.flaticon.es&lt;/a&gt;</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>

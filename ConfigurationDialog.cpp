@@ -22,6 +22,8 @@
 
 // Qt
 #include <QLineEdit>
+#include <QFile>
+#include <QTextStream>
 
 using namespace Utils;
 
@@ -37,10 +39,12 @@ ConfigurationDialog::ConfigurationDialog(Utils::TranscoderConfiguration& config,
   m_extractSubtitles->setChecked(m_configuration.extractSubtitles());
   m_subtitleLanguage->setCurrentIndex(static_cast<int>(m_configuration.preferredSubtitleLanguage()));
   m_audioChannels->setValue(m_configuration.audioChannelsNum());
+  m_themeCombo->setCurrentIndex(config.visualTheme().compare("Light") == 0 ? 0 : 1);
 
-  connect(m_videoCodec, SIGNAL(currentIndexChanged(int)), this, SLOT(fillComboBoxes()));
+  updateFormatComboBoxes();
 
-  fillComboBoxes();
+  connect(m_videoCodec, SIGNAL(currentIndexChanged(int)), this, SLOT(updateFormatComboBoxes()));
+  connect(m_themeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(changeTheme(int)));
 
   switch(config.audioCodec())
   {
@@ -94,13 +98,14 @@ void ConfigurationDialog::accept()
   m_configuration.setPreferredAudioLanguage(static_cast<TranscoderConfiguration::Language>(m_audioLanguage->currentIndex()));
   m_configuration.setExtractSubtitles(m_extractSubtitles->isChecked());
   m_configuration.setPreferredSubtitleLanguage(static_cast<TranscoderConfiguration::Language>(m_subtitleLanguage->currentIndex()));
-
+  const auto theme = qApp->styleSheet();
+  m_configuration.setVisualTheme(theme.isEmpty() ? "Light":"Dark");
 
   QDialog::accept();
 }
 
 //--------------------------------------------------------------------
-void ConfigurationDialog::fillComboBoxes()
+void ConfigurationDialog::updateFormatComboBoxes()
 {
   auto audioIndex = m_audioCodec->currentIndex();
   m_audioCodec->clear();
@@ -129,4 +134,24 @@ void ConfigurationDialog::fillComboBoxes()
       Q_ASSERT(false);
       break;
   }
+}
+
+//--------------------------------------------------------------------
+void ConfigurationDialog::changeTheme(int index)
+{
+  Utils::setApplicationTheme(index == 0 ? "Light":"Dark");
+}
+
+//--------------------------------------------------------------------
+void ConfigurationDialog::reject()
+{
+  const QString current = qApp->styleSheet().isEmpty() ? "Light":"Dark";
+  const QString theme   = m_configuration.visualTheme();
+
+  if(theme.compare(current, Qt::CaseInsensitive) != 0)
+  {
+    Utils::setApplicationTheme(theme);
+  }
+
+  QDialog::reject();
 }

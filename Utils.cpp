@@ -24,12 +24,12 @@
 #include <QSettings>
 #include <QDirIterator>
 #include <QTemporaryFile>
+#include <QApplication>
+#include <QFile>
+#include <QTextStream>
 
 // C++
 #include <thread>
-
-// Boost
-#include <boost/algorithm/string.hpp>
 
 const std::vector<std::wstring> Utils::MOVIE_FILE_EXTENSIONS   = { L".mp4", L".avi", L".ogv", L".webm", L".mkv", L".mpg", L".mpeg" };
 
@@ -43,13 +43,15 @@ const QString Utils::TranscoderConfiguration::AUDIO_CHANNELS_NUM = QObject::tr("
 const QString Utils::TranscoderConfiguration::AUDIO_LANGUAGE     = QObject::tr("Preferred audio language");
 const QString Utils::TranscoderConfiguration::SUBTITLE_EXTRACT   = QObject::tr("Extract subtitles");
 const QString Utils::TranscoderConfiguration::SUBTITLE_LANGUAGE  = QObject::tr("Preferred subtitle language");
+const QString Utils::TranscoderConfiguration::THEME              = QObject::tr("Visual theme");
 
 //-----------------------------------------------------------------
-bool Utils::isVideoFile(const boost::filesystem::path &file)
+bool Utils::isVideoFile(const std::filesystem::path &file)
 {
-  if(boost::filesystem::is_regular_file(file))
+  if(std::filesystem::is_regular_file(file))
   {
-    const auto extension = boost::algorithm::to_lower_copy(file.extension().wstring());
+    auto extension = file.extension().wstring();
+    for(auto &c: extension) c = std::tolower(c);
 
     return std::find(MOVIE_FILE_EXTENSIONS.cbegin(), MOVIE_FILE_EXTENSIONS.cend(), extension) != MOVIE_FILE_EXTENSIONS.cend();
   }
@@ -58,21 +60,21 @@ bool Utils::isVideoFile(const boost::filesystem::path &file)
 }
 
 //-----------------------------------------------------------------
-std::vector<boost::filesystem::path> Utils::findFiles(const boost::filesystem::path &initialDir,
-                                                      const std::vector<std::wstring> &extensions,
-                                                      bool with_subdirectories,
-                                                      const std::function<bool (const boost::filesystem::path &)> &condition)
+std::vector<std::filesystem::path> Utils::findFiles(const std::filesystem::path &initialDir,
+                                                    const std::vector<std::wstring> &extensions,
+                                                    bool with_subdirectories,
+                                                    const std::function<bool (const std::filesystem::path &)> &condition)
 {
-  std::vector<boost::filesystem::path> filesFound;
+  std::vector<std::filesystem::path> filesFound;
 
-  if(!initialDir.empty() && boost::filesystem::is_directory(initialDir))
+  if(!initialDir.empty() && std::filesystem::is_directory(initialDir))
   {
-    for(boost::filesystem::directory_entry &it: boost::filesystem::directory_iterator(initialDir))
+    for(auto &name: std::filesystem::directory_iterator(initialDir))
     {
-      const auto name = it.path();
-      if(name.filename_is_dot() || name.filename_is_dot_dot()) continue;
+      auto entry = name.path();
+      if(entry.filename() == "." || entry.filename() == "..") continue;
 
-      if(with_subdirectories && boost::filesystem::is_directory(name))
+      if(with_subdirectories && std::filesystem::is_directory(entry))
       {
         auto files = findFiles(name, extensions, with_subdirectories, condition);
 
@@ -80,7 +82,8 @@ std::vector<boost::filesystem::path> Utils::findFiles(const boost::filesystem::p
       }
       else
       {
-        const auto extension = boost::algorithm::to_lower_copy(name.extension().wstring());
+        auto extension = entry.extension().wstring();
+        for(auto &c: extension) c = std::tolower(c);
 
         if(std::find(extensions.cbegin(), extensions.cend(), extension) != extensions.cend() && condition(name))
         {
@@ -104,6 +107,7 @@ Utils::TranscoderConfiguration::TranscoderConfiguration()
 , m_extractSubtitles              {true}
 , m_audioChannels                 {2}
 , m_subtitleLanguage              {Language::DEFAULT}
+, m_theme                         {true}
 {
 }
 
@@ -112,7 +116,7 @@ void Utils::TranscoderConfiguration::load()
 {
   QSettings settings("Felix de las Pozas Alvarez", "VideoTranscoder");
 
-  m_root_directory    = boost::filesystem::path(settings.value(ROOT_DIRECTORY, QDir::currentPath()).toString().toStdWString());
+  m_root_directory    = std::filesystem::path(settings.value(ROOT_DIRECTORY, QDir::currentPath()).toString().toStdWString());
   m_number_of_threads = settings.value(NUMBER_OF_THREADS, std::thread::hardware_concurrency() /2).toInt();
   m_videoCodec        = static_cast<VideoCodec>(settings.value(VIDEO_CODEC, 0).toInt());
   m_videoBitrate      = settings.value(VIDEO_BITRATE, 0).toInt();
@@ -122,6 +126,7 @@ void Utils::TranscoderConfiguration::load()
   m_extractSubtitles  = settings.value(SUBTITLE_EXTRACT, true).toBool();
   m_audioChannels     = settings.value(AUDIO_CHANNELS_NUM, 2).toInt();
   m_subtitleLanguage  = static_cast<Language>(settings.value(SUBTITLE_LANGUAGE, 0).toInt());
+  m_theme             = settings.value(THEME, true).toBool();
 
   // go to parent or home if the saved directory no longer exists.
   m_root_directory = validDirectoryCheck(m_root_directory);
@@ -142,12 +147,13 @@ void Utils::TranscoderConfiguration::save() const
   settings.setValue(SUBTITLE_EXTRACT, m_extractSubtitles);
   settings.setValue(AUDIO_CHANNELS_NUM, m_audioChannels);
   settings.setValue(SUBTITLE_LANGUAGE, static_cast<int>(m_subtitleLanguage));
+  settings.setValue(THEME, m_theme);
 
   settings.sync();
 }
 
 //-----------------------------------------------------------------
-const boost::filesystem::path& Utils::TranscoderConfiguration::rootDirectory() const
+std::filesystem::path Utils::TranscoderConfiguration::rootDirectory() const
 {
   return m_root_directory;
 }
@@ -159,7 +165,7 @@ int Utils::TranscoderConfiguration::numberOfThreads() const
 }
 
 //-----------------------------------------------------------------
-void Utils::TranscoderConfiguration::setRootDirectory(const boost::filesystem::path& path)
+void Utils::TranscoderConfiguration::setRootDirectory(const std::filesystem::path& path)
 {
   m_root_directory = path;
 }
@@ -171,7 +177,7 @@ void Utils::TranscoderConfiguration::setNumberOfThreads(int value)
 }
 
 //-----------------------------------------------------------------
-const Utils::TranscoderConfiguration::VideoCodec Utils::TranscoderConfiguration::videoCodec() const
+Utils::TranscoderConfiguration::VideoCodec Utils::TranscoderConfiguration::videoCodec() const
 {
   return m_videoCodec;
 }
@@ -183,7 +189,7 @@ void Utils::TranscoderConfiguration::setVideoCodec(const VideoCodec codec)
 }
 
 //-----------------------------------------------------------------
-const Utils::TranscoderConfiguration::AudioCodec Utils::TranscoderConfiguration::audioCodec() const
+Utils::TranscoderConfiguration::AudioCodec Utils::TranscoderConfiguration::audioCodec() const
 {
   return m_audioCodec;
 }
@@ -195,7 +201,7 @@ void Utils::TranscoderConfiguration::setAudioCodec(const AudioCodec codec)
 }
 
 //-----------------------------------------------------------------
-const int Utils::TranscoderConfiguration::videoBitrate() const
+int Utils::TranscoderConfiguration::videoBitrate() const
 {
   return m_videoBitrate;
 }
@@ -207,7 +213,7 @@ void Utils::TranscoderConfiguration::setVideoBitrate(const int bitrate)
 }
 
 //-----------------------------------------------------------------
-const int Utils::TranscoderConfiguration::audioBitrate() const
+int Utils::TranscoderConfiguration::audioBitrate() const
 {
   return m_audioBitrate;
 }
@@ -225,7 +231,7 @@ void Utils::TranscoderConfiguration::setPreferredAudioLanguage(const Language la
 }
 
 //-----------------------------------------------------------------
-const Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredAudioLanguage() const
+Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredAudioLanguage() const
 {
   return m_outputLanguage;
 }
@@ -237,7 +243,7 @@ void Utils::TranscoderConfiguration::setPreferredSubtitleLanguage(const Language
 }
 
 //-----------------------------------------------------------------
-const Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredSubtitleLanguage() const
+Utils::TranscoderConfiguration::Language Utils::TranscoderConfiguration::preferredSubtitleLanguage() const
 {
   return m_subtitleLanguage;
 }
@@ -249,7 +255,7 @@ void Utils::TranscoderConfiguration::setExtractSubtitles(const bool value)
 }
 
 //-----------------------------------------------------------------
-const int Utils::TranscoderConfiguration::audioChannelsNum() const
+int Utils::TranscoderConfiguration::audioChannelsNum() const
 {
   return m_audioChannels;
 }
@@ -261,13 +267,13 @@ void Utils::TranscoderConfiguration::setAudioNumberOfChannels(const int channels
 }
 
 //-----------------------------------------------------------------
-const bool Utils::TranscoderConfiguration::extractSubtitles() const
+bool Utils::TranscoderConfiguration::extractSubtitles() const
 {
   return m_extractSubtitles;
 }
 
 //-----------------------------------------------------------------
-const bool Utils::TranscoderConfiguration::isValid() const
+bool Utils::TranscoderConfiguration::isValid() const
 {
   return (m_videoCodec == VideoCodec::VP8 && m_audioCodec == AudioCodec::VORBIS) ||
          (m_videoCodec == VideoCodec::VP9 && m_audioCodec == AudioCodec::VORBIS) ||
@@ -278,19 +284,51 @@ const bool Utils::TranscoderConfiguration::isValid() const
 }
 
 //-----------------------------------------------------------------
-boost::filesystem::path Utils::validDirectoryCheck(const boost::filesystem::path& directory)
+void Utils::TranscoderConfiguration::setVisualTheme(const QString &theme)
+{
+  m_theme = (theme.compare("light", Qt::CaseInsensitive) == 0);
+}
+
+//-----------------------------------------------------------------
+QString Utils::TranscoderConfiguration::visualTheme() const
+{
+  return (m_theme ? "Light":"Dark");
+}
+
+//-----------------------------------------------------------------
+std::filesystem::path Utils::validDirectoryCheck(const std::filesystem::path& directory)
 {
   auto current = directory;
 
-  while(!boost::filesystem::is_directory(current) && !current.empty() && !(current.root_directory() == current))
+  while(!std::filesystem::is_directory(current) && !current.empty() && !(current.root_directory() == current))
   {
     current = current.parent_path();
   }
 
-  if(!boost::filesystem::is_directory(current) || current.empty() || current.root_directory() == current)
+  if(!std::filesystem::is_directory(current) || current.empty() || current.root_directory() == current)
   {
-    current = boost::filesystem::path(QDir::homePath().toStdWString());
+    current = std::filesystem::path(QDir::homePath().toStdWString());
   }
 
   return current;
+}
+
+//-----------------------------------------------------------------
+void Utils::setApplicationTheme(const QString &theme)
+{
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+
+  QString sheet;
+
+  if (theme.compare("Light", Qt::CaseInsensitive) != 0)
+  {
+    QFile file(":qdarkstyle/style.qss");
+    file.open(QFile::ReadOnly | QFile::Text);
+    QTextStream ts(&file);
+    sheet = ts.readAll();
+  }
+
+  qApp->setStyleSheet(sheet);
+
+  QApplication::restoreOverrideCursor();
 }
