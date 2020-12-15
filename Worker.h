@@ -35,7 +35,11 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavutil/fifo.h>
 #include <libavresample/avresample.h>
+#include <libavfilter/avfilter.h>
 }
+
+// C++
+#include <filesystem>
 
 /** \class Worker
  * \brief Transcoder thread.
@@ -117,35 +121,58 @@ class Worker
     bool needsSubtitleProcessing() const;
 
   protected:
-    const Utils::TranscoderConfiguration &m_configuration;            /** Configuration struct reference.        */
-    QFile                                 m_input_file;               /** input file handle.                     */
-    QFile                                 m_output_file;              /** output file handle.                    */
-    AVCodec                              *m_audio_decoder;            /** input audio decoder.                   */
-    AVCodec                              *m_video_decoder;            /** input video decoder.                   */
-    AVCodec                              *m_subtitle_decoder;         /** input subtitle decoder.                */
-    AVCodecContext                       *m_audio_decoder_context;    /** input audio decoder context.           */
-    AVCodecContext                       *m_video_decoder_context;    /** input video decoder context.           */
-    AVCodecContext                       *m_subtitle_decoder_context; /** input subtitle decoder context.        */
-    AVFormatContext                      *m_input_context;            /** input container context.               */
-    AVFrame                              *m_frame;                    /** libav frame (decoded data).            */
-    int                                   m_audio_stream_id;          /** id of the audio stream in the file.    */
-    int                                   m_video_stream_id;          /** id of the video stream in the file.    */
-    int                                   m_subtitle_stream_id;       /** id of the subtitle stream in the file. */
-    AVFormatContext                      *m_output_context;           /** output container context.              */
-    AVCodecContext                       *m_audio_coder_context;      /** output audio coder context.            */
-    AVCodecContext                       *m_video_coder_context;      /** output video coder context.            */
-    AVCodec                              *m_audio_coder;              /** output audio decoder.                  */
-    AVCodec                              *m_video_coder;              /** output video decoder.                  */
-    AVPacket                             *m_packet;                   /** libav packet (encoded data).           */
-    const std::filesystem::path           m_source_info;              /** source file information.               */
-    const std::filesystem::path           m_source_path;              /** source file path.                      */
+    const Utils::TranscoderConfiguration &m_configuration; /** Configuration struct reference. */
+
+  private:
+    /** \struct Stream
+     * \brief Contains all the variables necessary for libav stream transcoding.
+     *
+     */
+    struct Stream
+    {
+      int              id;             /** stream libav id.     */
+      QString          name;           /** stream name.         */
+      AVCodec         *decoder;        /** stream decoder.      */
+      AVCodecContext  *decoderContext; /** decoder context.     */
+      AVCodec         *encoder;        /** stream encoder.      */
+      AVCodecContext  *encoderContext; /** encoder context.     */
+      AVStream        *stream;         /** libav stream.        */
+      AVFormatContext *output_file;    /** stream output file.  */
+      AVFilterGraph   *filter_graph;   /** stream filter graph. */
+      AVFilterContext *infilter;       /** input filter.        */
+      AVFilterContext *outfilter;      /** output filter.       */
+      long long        pts;            /** last pts muxed.      */
+
+
+      /** \brief Stream struct constructor.
+       *
+       */
+      Stream(): id{AVERROR_STREAM_NOT_FOUND}, decoder{nullptr}, decoderContext{nullptr}, encoder{nullptr},
+                encoderContext{nullptr}, stream{nullptr}, output_file{nullptr}, filter_graph{nullptr},
+                infilter{nullptr}, outfilter{nullptr}, pts{0}
+                {};
+    };
+
+    Stream                      m_audio_stream;             /** audio stream variables.                */
+    Stream                      m_video_stream;             /** video stream variables.                */
+    Stream                      m_subtitle_stream;          /** subtitle stream variables.             */
+    QFile                       m_input_file;               /** input file handle.                     */
+    AVFormatContext            *m_input_context;            /** input container context.               */
+    QFile                       m_output_file;              /** output file handle.                    */
+    AVFormatContext            *m_output_context;           /** output container context.              */
+    QFile                       m_subtitle_file;            /** output subtitle file handler.          */
+    AVFormatContext            *m_output_subtitle_context;  /** output subtitle container context.     */
+    AVFrame                    *m_frame;                    /** libav frame (decoded data).            */
+    AVPacket                   *m_packet;                   /** libav packet (encoded data).           */
+    const std::filesystem::path m_source_info;              /** source file information.               */
+    const std::filesystem::path m_source_path;              /** source file path.                      */
+    long long int               m_last_mux_dts;             /** dts of last packet sent to muxer.      */
 
     static const int s_io_buffer_size = 16384 + AV_INPUT_BUFFER_PADDING_SIZE;
 
     static const QList<int> VALID_VIDEO_CODECS; /** Valid video codecs for a Chromecast valid video. */
     static const QList<int> VALID_AUDIO_CODECS; /** Valid audio codecs for a Chromecast valid audio. */
 
-  private:
     /** \brief Returns true if the input file can be read and false otherwise.
      *
      */
@@ -185,17 +212,17 @@ class Worker
     /** \brief Returns the output file extension as a QString.
      *
      */
-    virtual std::wstring outputExtension() const = 0;
+    virtual std::wstring outputExtension() const;
 
     /** \brief Returns the audio codec id in libav.
      *
      */
-    virtual AVCodecID audioCodecId() const = 0;
+    AVCodecID audioCodecId() const;
 
     /** \brief Returns the video codec id in libav.
      *
      */
-    virtual AVCodecID videoCodecId() const = 0;
+    AVCodecID videoCodecId() const;
 
     /** \brief Returns true if the input video file needs to be processed because either the video or
      * the audio is not in a correct format or the subtitles needs to be extracted.
@@ -203,10 +230,38 @@ class Worker
      */
     bool inputNeedsProcessing() const;
 
-    /** \brief Opens the output context and configures it.
+    /** \brief Opens the output context and configures it. Returns true on success and false otherwise.
      *
      */
-    virtual bool create_output();
+    bool create_output();
+
+    /** \brief libav log callback remove when release.
+     *
+     */
+    static void log_callback(void *ptr, int level, const char *fmt, va_list vl);
+
+    /** \brief Initializes the filters needed for audio trasncoding due to different frame sizes. Returns
+     * true on success and false otherwise.
+     *
+     */
+    bool init_audio_filters();
+
+    /** \brief Initializes the filters needed for video transcoding. Returns true on success and false otherwise.
+     *
+     */
+    bool init_video_filters();
+
+    /** \brief Helper method that process a stream packet to frame and then encodes it and pushes it to output file.
+     * Returns true on success and false otherwise.
+     * \param[in] stream Stream to process current m_packet information.
+     *
+     */
+    bool process_stream_packet(Stream &stream);
+
+    /** \brief Flushes all streams and finishes.
+     *
+     */
+    bool flush_streams();
 
     Worker(const Worker &) = delete;
     Worker(Worker &&) = delete;
@@ -214,145 +269,9 @@ class Worker
 
     bool            m_fail;         /** true on process success, false otherwise.            */
     bool            m_stop;         /** true if the process needs to abort, false otherwise. */
-
-    AVStream *m_audioStream; /** output audio stream. */
-    AVStream *m_videoStream; /** output video stream. */
 };
 
-/** \class H264Worker
- * \brief Transcodes the input file into a H.264 video file.
- *
- */
-class H264Worker
-: public Worker
-{
-  public:
-    /** \brief H264Worker class constructor.
-     * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] config Configuration struct reference.
-     *
-     */
-    explicit H264Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
-    : Worker(sourceInfo, config)
-    {};
-
-    /** \brief H264Worker class virtual destructor.
-     *
-     */
-    virtual ~H264Worker()
-    {}
-
-  private:
-    virtual AVCodecID audioCodecId() const
-    { return (m_configuration.audioCodec() == Utils::TranscoderConfiguration::AudioCodec::AAC ? AV_CODEC_ID_AAC : AV_CODEC_ID_MP3); }
-
-    virtual AVCodecID videoCodecId() const
-    { return AV_CODEC_ID_H264; }
-
-    virtual std::wstring outputExtension() const
-    { return L".mp4"; }
-};
-
-/** \class H265Worker
- * \brief Transcodes the input file into a H.265 video file.
- *
- */
-class H265Worker
-: public Worker
-{
-  public:
-    /** \brief H265Worker class constructor.
-     * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] config Configuration struct reference.
-     *
-     */
-    explicit H265Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
-    : Worker(sourceInfo, config)
-    {};
-
-    /** \brief H265Worker class virtual destructor.
-     *
-     */
-    virtual ~H265Worker()
-    {}
-
-  private:
-    virtual AVCodecID audioCodecId() const
-    { return (m_configuration.audioCodec() == Utils::TranscoderConfiguration::AudioCodec::AAC ? AV_CODEC_ID_AAC : AV_CODEC_ID_MP3); }
-
-    virtual AVCodecID videoCodecId() const
-    { return AV_CODEC_ID_HEVC; }
-
-    virtual std::wstring outputExtension() const
-    { return L".mp4"; }
-};
-
-/** \class VP8Worker
- * \brief Transcodes the input file into a VP8 video file.
- *
- */
-class VP8Worker
-: public Worker
-{
-  public:
-    /** \brief VP8Worker class constructor.
-     * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] config Configuration struct reference.
-     *
-     */
-    explicit VP8Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
-    : Worker(sourceInfo, config)
-    {};
-
-    /** \brief VP8Worker class virtual destructor.
-     *
-     */
-    virtual ~VP8Worker()
-    {}
-
-  private:
-    virtual AVCodecID audioCodecId() const
-    { return AV_CODEC_ID_VORBIS; }
-
-    virtual AVCodecID videoCodecId() const
-    { return AV_CODEC_ID_VP8; }
-
-    virtual std::wstring outputExtension() const
-    { return L".vp8"; }
-};
-
-/** \class VP9Worker
- * \brief Transcodes the input file into a VP9 video file.
- *
- */
-class VP9Worker
-: public Worker
-{
-  public:
-    /** \brief VP9Worker class constructor.
-     * \param[in] sourceInfo QFileInfo struct of input file.
-     * \param[in] config Configuration struct reference.
-     *
-     */
-    explicit VP9Worker(const std::filesystem::path &sourceInfo, const Utils::TranscoderConfiguration &config)
-    : Worker(sourceInfo, config)
-    {};
-
-    /** \brief VP8Worker class virtual destructor.
-     *
-     */
-    virtual ~VP9Worker()
-    {}
-
-  private:
-    virtual AVCodecID audioCodecId() const
-    { return AV_CODEC_ID_VORBIS; }
-
-    virtual AVCodecID videoCodecId() const
-    { return AV_CODEC_ID_VP9; }
-
-    virtual std::wstring outputExtension() const
-    { return L".vp9"; }
-};
+extern int hwaccel_lax_profile_check;
+extern AVBufferRef *hw_device_ctx;
 
 #endif // WORKER_H_

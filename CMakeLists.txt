@@ -40,8 +40,10 @@ set(LIBAV_DIR "D:/Desarrollo/Bibliotecas/libav-12")
 set(LIBAV_INCLUDE_DIR ${LIBAV_DIR})
 set(LIBAV_LIBRARIES   ${LIBAV_DIR}/libavformat/libavformat.a 
                       ${LIBAV_DIR}/libavcodec/libavcodec.a 
-                      ${LIBAV_DIR}/libavutil/libavutil.a 
-                      ${LIBAV_DIR}/libavresample/libavresample.a)
+                      ${LIBAV_DIR}/libavutil/libavutil.a
+                      ${LIBAV_DIR}/libavfilter/libavfilter.a 
+                      ${LIBAV_DIR}/libavresample/libavresample.a
+                      ${LIBAV_DIR}/libswscale/libswscale.a)
                       
 # libvpx library
 set(LIBVPX_INCLUDE_DIR "D:/Desarrollo/Bibliotecas/libvpx")

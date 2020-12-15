@@ -221,26 +221,7 @@ void ProcessDialog::create_transcoder()
 
   ++m_num_workers;
 
-  Worker *worker = nullptr;
-
-  switch(m_configuration.videoCodec())
-  {
-    case Utils::TranscoderConfiguration::VideoCodec::H264:
-      worker = new H264Worker(filename, m_configuration);
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::H265:
-      worker = new H265Worker(filename, m_configuration);
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::VP8:
-      worker = new VP8Worker(filename, m_configuration);
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::VP9:
-      worker = new VP9Worker(filename, m_configuration);
-      break;
-    default:
-      Q_ASSERT(false);
-      break;
-  }
+  auto worker = new Worker(filename, m_configuration);
 
   auto message = QString::fromStdWString(filename.filename().wstring());
   assign_bar_to_worker(worker, message);
