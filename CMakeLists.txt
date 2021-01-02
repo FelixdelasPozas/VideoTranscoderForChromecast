@@ -104,7 +104,7 @@ set(CORE_EXTERNAL_LIBS
   ${ZLIB_LIBRARY}
   libws2_32.a
 )
-  
+
 add_executable(VideoTranscoder ${CORE_SOURCES})
 target_link_libraries (VideoTranscoder ${CORE_EXTERNAL_LIBS})
 qt5_use_modules(VideoTranscoder Widgets)

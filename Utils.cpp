@@ -332,3 +332,23 @@ void Utils::setApplicationTheme(const QString &theme)
 
   QApplication::restoreOverrideCursor();
 }
+
+//-----------------------------------------------------------------
+bool Utils::toUCS2(const std::filesystem::path &filename)
+{
+  if(std::filesystem::exists(filename))
+  {
+    QFile file(QString::fromStdWString(filename.wstring()));
+    if(!file.open(QIODevice::ReadWrite)) return false;
+
+    QString contents = file.readAll();
+    file.resize(0);
+
+    contents.prepend(QChar::ByteOrderMark);
+    file.write(QByteArray::fromRawData(reinterpret_cast<const char*>(contents.constData()), (contents.size()+1)));
+    file.flush();
+    file.close();
+  }
+
+  return false;
+}

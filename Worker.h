@@ -142,6 +142,7 @@ class Worker
       AVFilterContext *infilter;       /** input filter.        */
       AVFilterContext *outfilter;      /** output filter.       */
       long long        pts;            /** last pts muxed.      */
+      AVRational       time_base;      /** stream time base.    */
 
 
       /** \brief Stream struct constructor.
@@ -262,6 +263,17 @@ class Worker
      *
      */
     bool flush_streams();
+
+    /** \brief Writes the current packet to the given stream.
+     * \param[in] stream Stream of the packet.
+     *
+     */
+    bool write_packet(Stream &stream);
+
+    /** \brief Writes a packet of SRT data to the subtitle file.
+     *
+     */
+    bool write_srt_packet();
 
     Worker(const Worker &) = delete;
     Worker(Worker &&) = delete;

@@ -69,6 +69,12 @@ namespace Utils
    */
   void setApplicationTheme(const QString &theme);
 
+  /** \brief Converts the contents of the file to UCS-2 little endian. If the file is not text
+   *  then the result is undefined. Returns true on success and false otherwise.
+   *
+   */
+  bool toUCS2(const std::filesystem::path &filename);
+
   /** \class TranscoderConfiguration
    * \brief Implements the configuration storage/management.
    *

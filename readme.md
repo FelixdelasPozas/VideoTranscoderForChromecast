@@ -9,14 +9,14 @@ Video Transcoder For Chromecast
 - [Repository information](#repository-information)
 
 # Description
-Simple transcoder program to transcode video files to formats supported by Chromescast devices using the NVidia NVENC encoder.   
-
-** TODO **
+Simple transcoder program to transcode video files to formats supported by Chromescast devices using the NVidia NVENC encoder for hardware
+acceleration.   
 
 ## Options
 The tool can be configured:
-* The output codecs are H.264, HEVC (H.265), VP8 and VP9. Only the first two are hardware accelerated using NVENC.
-* Extract subtitle files from the input files with language preferences.
+* The output video codecs are H.264, HEVC (H.265), VP8 and VP9. Only the first two are hardware accelerated using NVENC.
+* The output audio codecs are MP3, AAC and Vorbis OGG.
+* Extract subtitle files from the input files with language preferences. Only SRT subtitles are supported, other subtitle formats are ignored.
 * Select output audio language by preferences.
 
 ## Input file formats
@@ -34,24 +34,25 @@ The following libraries are required:
 * [Qt opensource framework](http://www.qt.io/).
 
 # Install
-
-Download and execute the ![latest release](https://github.com/FelixdelasPozas/transcodertomp3/releases) installer.
+There will never be any binary release of this program, as my libav is compiled with '--enable-nonfree' flag thus
+making it unredistributable. The source code releases can be downloaded from the
+![releases page](https://github.com/FelixdelasPozas/TranscoderForChromecast/releases).
 
 # Screenshots
 Configuration dialog.
 
-![Configuration Dialog](https://cloud.githubusercontent.com/assets/12167134/14055036/94e9906a-f2de-11e5-8f8c-5989a96dc791.jpg)
+![Configuration Dialog]()
 
 Simple main dialog.
 
-![Main dialog](https://cloud.githubusercontent.com/assets/12167134/7867872/e2fd4c28-0578-11e5-93bb-56c7ee8b26df.jpg)
+![Main dialog]()
 
 Dialog shown while processing files.
 
-![Process Dialog](https://cloud.githubusercontent.com/assets/12167134/7867873/e48c0714-0578-11e5-8de4-ba1b44b1b72f.jpg)
+![Process Dialog]()
 
 # Repository information
-**Version**: 1.2.2
+**Version**: 1.0.0
 
 **Status**: finished
 
