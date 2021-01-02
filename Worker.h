@@ -130,19 +130,19 @@ class Worker
      */
     struct Stream
     {
-      int              id;             /** stream libav id.     */
-      QString          name;           /** stream name.         */
-      AVCodec         *decoder;        /** stream decoder.      */
-      AVCodecContext  *decoderContext; /** decoder context.     */
-      AVCodec         *encoder;        /** stream encoder.      */
-      AVCodecContext  *encoderContext; /** encoder context.     */
-      AVStream        *stream;         /** libav stream.        */
-      AVFormatContext *output_file;    /** stream output file.  */
-      AVFilterGraph   *filter_graph;   /** stream filter graph. */
-      AVFilterContext *infilter;       /** input filter.        */
-      AVFilterContext *outfilter;      /** output filter.       */
-      long long        pts;            /** last pts muxed.      */
-      AVRational       time_base;      /** stream time base.    */
+      int              id;             /** stream libav id of the input stream. */
+      QString          name;           /** stream name (audio/video/subtitle).  */
+      AVCodec         *decoder;        /** stream decoder.                      */
+      AVCodecContext  *decoderContext; /** stream decoder context.              */
+      AVCodec         *encoder;        /** stream encoder.                      */
+      AVCodecContext  *encoderContext; /** stream encoder context.              */
+      AVStream        *stream;         /** libav stream.                        */
+      AVFormatContext *output_file;    /** stream output file.                  */
+      AVFilterGraph   *filter_graph;   /** stream filter graph.                 */
+      AVFilterContext *infilter;       /** input filter.                        */
+      AVFilterContext *outfilter;      /** output filter.                       */
+      long long        pts;            /** last pts muxed.                      */
+      AVRational       time_base;      /** stream time base.                    */
 
 
       /** \brief Stream struct constructor.
@@ -154,20 +154,17 @@ class Worker
                 {};
     };
 
-    Stream                      m_audio_stream;             /** audio stream variables.                */
-    Stream                      m_video_stream;             /** video stream variables.                */
-    Stream                      m_subtitle_stream;          /** subtitle stream variables.             */
-    QFile                       m_input_file;               /** input file handle.                     */
-    AVFormatContext            *m_input_context;            /** input container context.               */
-    QFile                       m_output_file;              /** output file handle.                    */
-    AVFormatContext            *m_output_context;           /** output container context.              */
-    QFile                       m_subtitle_file;            /** output subtitle file handler.          */
-    AVFormatContext            *m_output_subtitle_context;  /** output subtitle container context.     */
-    AVFrame                    *m_frame;                    /** libav frame (decoded data).            */
-    AVPacket                   *m_packet;                   /** libav packet (encoded data).           */
-    const std::filesystem::path m_source_info;              /** source file information.               */
-    const std::filesystem::path m_source_path;              /** source file path.                      */
-    long long int               m_last_mux_dts;             /** dts of last packet sent to muxer.      */
+    Stream                      m_audio_stream;    /** audio stream variables.           */
+    Stream                      m_video_stream;    /** video stream variables.           */
+    Stream                      m_subtitle_stream; /** subtitle stream variables.        */
+    QFile                       m_input_file;      /** input file handle.                */
+    AVFormatContext            *m_input_context;   /** input container context.          */
+    QFile                       m_output_file;     /** output file handle.               */
+    AVFormatContext            *m_output_context;  /** output container context.         */
+    QFile                       m_subtitle_file;   /** output subtitle file handler.     */
+    AVFrame                    *m_frame;           /** libav frame (decoded data).       */
+    AVPacket                   *m_packet;          /** libav packet (encoded data).      */
+    const std::filesystem::path m_source_info;     /** source file information.          */
 
     static const int s_io_buffer_size = 16384 + AV_INPUT_BUFFER_PADDING_SIZE;
 
@@ -209,11 +206,6 @@ class Worker
      *
      */
     static long long int custom_IO_seek(void *opaque, long long int offset, int whence);
-
-    /** \brief Returns the output file extension as a QString.
-     *
-     */
-    virtual std::wstring outputExtension() const;
 
     /** \brief Returns the audio codec id in libav.
      *
@@ -257,20 +249,20 @@ class Worker
      * \param[in] stream Stream to process current m_packet information.
      *
      */
-    bool process_stream_packet(Stream &stream);
+    bool process_av_packet(Stream &stream);
 
     /** \brief Flushes all streams and finishes.
      *
      */
     bool flush_streams();
 
-    /** \brief Writes the current packet to the given stream.
+    /** \brief Writes the current packet to the given stream. Returns true on success and false otherwise.
      * \param[in] stream Stream of the packet.
      *
      */
-    bool write_packet(Stream &stream);
+    bool write_av_packet(Stream &stream);
 
-    /** \brief Writes a packet of SRT data to the subtitle file.
+    /** \brief Writes a packet of SRT data to the subtitle file. Returns true on success and false otherwise.
      *
      */
     bool write_srt_packet();

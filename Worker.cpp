@@ -1,4 +1,5 @@
 /*
+ File: Worker.cpp
  Created on: 8 dic. 2017
  Author: Felix de las Pozas Alvarez
 
@@ -45,18 +46,18 @@ const QList<int> Worker::VALID_VIDEO_CODECS = { AV_CODEC_ID_VP8, AV_CODEC_ID_VP9
 const QList<int> Worker::VALID_AUDIO_CODECS = { AV_CODEC_ID_MP3, AV_CODEC_ID_AAC, AV_CODEC_ID_VORBIS };
 
 const std::wstring SUBTITLE_EXTENSION = L".srt";
+const std::wstring VIDEO_EXTENSION    = L".mkv";
+
+constexpr auto NO_PTS_VALUE = static_cast<long long int>(AV_NOPTS_VALUE);
 
 //--------------------------------------------------------------------
 Worker::Worker(const std::filesystem::path &source_info, const Utils::TranscoderConfiguration &config)
 : m_configuration           {config}
 , m_input_context           {nullptr}
 , m_output_context          {nullptr}
-, m_output_subtitle_context {nullptr}
 , m_frame                   {nullptr}
 , m_packet                  {nullptr}
 , m_source_info             (source_info)
-, m_source_path             (source_info.parent_path())
-, m_last_mux_dts            {0}
 , m_fail                    {false}
 , m_stop                    {false}
 {
@@ -137,7 +138,7 @@ void Worker::run()
             {
               if(transcodeAudio)
               {
-                if(!process_stream_packet(m_audio_stream))
+                if(!process_av_packet(m_audio_stream))
                 {
                   emit error_message(tr("Error transcoding audio frame for file '%1'.").arg(filename));
                   break;
@@ -145,7 +146,7 @@ void Worker::run()
               }
               else
               {
-                if(!write_packet(m_audio_stream))
+                if(!write_av_packet(m_audio_stream))
                 {
                   emit error_message(tr("Error copying audio packet to output for file '%1'.").arg(filename));
                   break;
@@ -156,7 +157,7 @@ void Worker::run()
             {
               if(transcodeVideo)
               {
-                if(!process_stream_packet(m_video_stream))
+                if(!process_av_packet(m_video_stream))
                 {
                   emit error_message(tr("Error transcoding video frame for file '%1'.").arg(filename));
                   break;
@@ -164,7 +165,7 @@ void Worker::run()
               }
               else
               {
-                if(!write_packet(m_video_stream))
+                if(!write_av_packet(m_video_stream))
                 {
                   emit error_message(tr("Error copying video packet to output for file '%1'.").arg(filename));
                   break;
@@ -173,7 +174,7 @@ void Worker::run()
             }
           }
 
-          if(m_packet && m_packet->stream_index == m_subtitle_stream.id && transcodeSubtitles)
+          if(transcodeSubtitles && m_packet->stream_index == m_subtitle_stream.id)
           {
             write_srt_packet();
           }
@@ -236,12 +237,12 @@ bool Worker::check_output_file_permissions()
 
   if(needsAudioProcessing() || needsVideoProcessing())
   {
-    files << QString::fromStdWString(m_source_info.wstring() + outputExtension());
+    files << QString::fromStdWString(m_source_info.wstring() + VIDEO_EXTENSION);
   }
 
   if(needsSubtitleProcessing())
   {
-    files << QString::fromStdWString(m_source_info.wstring() + SUBTITLE_EXTENSION);
+    files << QString::fromStdWString(m_source_info.parent_path().wstring() + L"/" + m_source_info.stem().wstring() + SUBTITLE_EXTENSION);
   }
 
   for(const auto filename: files)
@@ -250,7 +251,8 @@ bool Worker::check_output_file_permissions()
 
     if(outputFile.exists())
     {
-      emit error_message(QString("Output file '%1' exists.").arg(filename));
+      const auto fn = std::filesystem::path{filename.toStdWString()};
+      emit error_message(QString("Output file '%1' exists.").arg(QString::fromStdWString(fn.filename())));
       m_fail = true;
       return false;
     }
@@ -522,26 +524,14 @@ void Worker::deinit_libav()
     }
   }
 
-  if(m_output_subtitle_context && !m_fail)
+  for(auto graph: {m_audio_stream.filter_graph, m_video_stream.filter_graph})
   {
-    int value;
-    if((value = av_write_trailer(m_output_subtitle_context)) != 0)
-    {
-      const auto filename = QString::fromStdWString(m_source_info.wstring());
-      emit error_message(tr("Unable to write trailer for subtitle file for '%1' Error: %2.").arg(filename).arg(av_error_string(value)));
-    }
-
-    if (!(m_output_subtitle_context->oformat->flags & AVFMT_NOFILE))
-    {
-      if((value = avio_close(m_output_subtitle_context->pb)) < 0)
-      {
-        const auto filename = QString::fromStdWString(m_source_info.wstring());
-        emit error_message(tr("Unable to close subtitle file for '%1' Error: %2.").arg(filename).arg(av_error_string(value)));
-      }
-    }
+    if(!graph) continue;
+    for(unsigned int i = 0; i < graph->nb_filters; ++i) avfilter_free(graph->filters[i]);
+    avfilter_graph_free(&graph);
   }
 
-  for(auto context: {m_input_context, m_output_context, m_output_subtitle_context})
+  for(auto context: {m_input_context, m_output_context})
   {
     if(context) avformat_free_context(context);
   }
@@ -640,7 +630,7 @@ bool Worker::create_output()
 
   if(needsAudioProcessing() || needsVideoProcessing())
   {
-    const auto filename = QString::fromStdWString(m_source_info.wstring() + outputExtension());
+    const auto filename = QString::fromStdWString(m_source_info.wstring() + VIDEO_EXTENSION);
     auto format = av_guess_format(nullptr, filename.toStdString().c_str(), nullptr);
     if(!format)
     {
@@ -800,7 +790,7 @@ bool Worker::create_output()
 
       m_audio_stream.time_base = m_audio_stream.stream->time_base = m_audio_stream.encoderContext->time_base;
 
-      if(inputStream->duration != static_cast<long long int>(AV_NOPTS_VALUE))
+      if(inputStream->duration != NO_PTS_VALUE)
       {
         m_audio_stream.stream->duration = av_rescale_q(inputStream->duration, inputStream->time_base, m_audio_stream.time_base);
       }
@@ -906,32 +896,6 @@ void Worker::log_callback(void *ptr, int level, const char *fmt, va_list vl)
 }
 
 //-----------------------------------------------------------------------------
-std::wstring Worker::outputExtension() const
-{
-  std::wstring result;
-
-  switch(m_configuration.videoCodec())
-  {
-    case Utils::TranscoderConfiguration::VideoCodec::VP8:
-      return L".vp8";
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::VP9:
-      return L".vp9";
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::H264:
-    case Utils::TranscoderConfiguration::VideoCodec::H265:
-      return L".mkv";
-      break;
-    default:
-      break;
-  }
-
-  emit error_message(tr("Invalid video codec"));
-
-  return L".invalid";
-}
-
-//-----------------------------------------------------------------------------
 AVCodecID Worker::audioCodecId() const
 {
   switch(m_configuration.audioCodec())
@@ -981,7 +945,7 @@ AVCodecID Worker::videoCodecId() const
 }
 
 //-----------------------------------------------------------------------------
-bool Worker::process_stream_packet(Stream &stream)
+bool Worker::process_av_packet(Stream &stream)
 {
   // Try to decode the packet into a frame/multiple frames.
   auto result = avcodec_send_packet(stream.decoderContext, m_packet);
@@ -999,12 +963,6 @@ bool Worker::process_stream_packet(Stream &stream)
 
   while(0 == (result = avcodec_receive_frame(stream.decoderContext, m_frame)))
   {
-    if(m_packet->stream_index == m_subtitle_stream.id)
-    {
-      m_subtitle_file.write(reinterpret_cast<const char *>(m_packet->data), m_packet->size);
-      continue;
-    }
-
     if(stream.infilter == nullptr)
     {
       auto value = avcodec_send_frame(stream.encoderContext, m_frame);
@@ -1070,10 +1028,7 @@ bool Worker::process_stream_packet(Stream &stream)
           stream.pts += m_packet->duration;
         }
 
-        if(!write_packet(stream))
-        {
-          return false;
-        }
+        if(!write_av_packet(stream)) return false;
       }
 
       if (value < 0 && value != AVERROR(EAGAIN))
@@ -1337,7 +1292,7 @@ bool Worker::flush_streams()
 
     if(stream.encoder)
     {
-      process_stream_packet(stream);
+      process_av_packet(stream);
       avcodec_flush_buffers(stream.decoderContext);
       avcodec_flush_buffers(stream.encoderContext);
     }
@@ -1354,10 +1309,8 @@ bool Worker::flush_streams()
 }
 
 //-----------------------------------------------------------------------------
-bool Worker::write_packet(Stream &stream)
+bool Worker::write_av_packet(Stream &stream)
 {
-  constexpr auto NO_PTS_VALUE = static_cast<long long int>(AV_NOPTS_VALUE);
-
   if(m_packet)
   {
     const auto tb_codec = stream.time_base;
