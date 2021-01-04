@@ -9,18 +9,21 @@ Video Transcoder For Chromecast
 - [Repository information](#repository-information)
 
 # Description
-Simple transcoder program to transcode video files to formats supported by Chromescast devices using the NVidia NVENC encoder for hardware
-acceleration.   
+Simple program to transcode video files to formats supported by Chromescast Ultra devices using the NVidia NVENC encoder
+for hardware acceleration.   
 
 ## Options
 The tool can be configured:
 * The output video codecs are H.264, HEVC (H.265), VP8 and VP9. Only the first two are hardware accelerated using NVENC.
-* The output audio codecs are MP3, AAC and Vorbis OGG.
-* Extract subtitle files from the input files with language preferences. Only SRT subtitles are supported, other subtitle formats are ignored.
+* The output audio codecs are AAC for H.264/H.265 and Vorbis OGG for VP8/VP9.
+* Extract subtitles from the input files with language preferences. Only SRT subtitles are supported, other subtitle formats are ignored.
 * Select output audio language by preferences.
 
 ## Input file formats
-The input videos recognized by the tool are the same recognized by libav (ffmpeg) library. 
+The input videos recognized by the tool are the same recognized by libav (ffmpeg) library.
+
+## Output file formats
+The resulting transcoded files are in Matroska MKV format.  
 
 # Compilation requirements
 ## To build the tool:
@@ -60,9 +63,9 @@ Dialog shown while processing files.
 
 **cloc statistics**
 
-| Language                     |files          |blank        |comment           |code  |
-|:-----------------------------|--------------:|------------:|-----------------:|-----:|
-| C++                          |   11          |  601        |    384           |2458  |
-| C/C++ Header                 |   10          |  243        |    693           | 463  |
-| CMake                        |    1          |   22        |     13           |  95  |
-| **Total**                    |   **22**      |  **866**    |   **1090**       |**3016**|
+| Language                     |files          |blank        |comment          |code  |
+|:-----------------------------|--------------:|------------:|----------------:|-----:|
+| C++                          |    7          |  417        |    245          |1833  |
+| C/C++ Header                 |    6          |  159        |    451          | 296  |
+| CMake                        |    2          |   26        |     22          |  93  |
+| **Total**                    |   **15**      |  **602**    |   **718**       |**2222**|

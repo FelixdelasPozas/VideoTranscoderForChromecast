@@ -173,8 +173,9 @@ void ProcessDialog::increment_global_progress()
   m_progress_bars[bar] = nullptr;
   bar->setEnabled(false);
   bar->setFormat("Idle");
+  bar->setToolTip(tr("Idle, waiting for work."));
 
-  auto cancelled = worker->has_been_cancelled();
+  const auto cancelled = worker->has_been_cancelled();
   delete worker;
 
   if((m_globalProgress->maximum() == m_globalProgress->value()) || cancelled)
@@ -223,7 +224,7 @@ void ProcessDialog::create_transcoder()
 
   auto worker = new Worker(filename, m_configuration);
 
-  auto message = QString::fromStdWString(filename.filename().wstring());
+  const auto message = QString::fromStdWString(filename.filename().wstring());
   assign_bar_to_worker(worker, message);
 
   worker->start();
@@ -244,6 +245,7 @@ void ProcessDialog::assign_bar_to_worker(Worker* worker, const QString& message)
       bar->setValue(0);
       bar->setEnabled(true);
       bar->setFormat(message);
+      bar->setToolTip(tr("Processing %1").arg(message));
 
       connect(worker, SIGNAL(progress(int)), bar, SLOT(setValue(int)));
 
@@ -264,7 +266,7 @@ bool ProcessDialog::event(QEvent *e)
 {
   if(e->type() == QEvent::KeyPress)
   {
-    auto ke = dynamic_cast<QKeyEvent *>(e);
+    const auto ke = dynamic_cast<QKeyEvent *>(e);
     if(ke && (ke->key() == Qt::Key_Escape || ke->key() == Qt::Key_Enter))
     {
       e->accept();

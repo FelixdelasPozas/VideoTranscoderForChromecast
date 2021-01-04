@@ -210,6 +210,30 @@ void Worker::run()
     m_fail = true;
   }
 
+  if(m_stop)
+  {
+    QStringList files;
+
+    const auto output_video = QString::fromStdWString(m_source_info.wstring() + VIDEO_EXTENSION);
+
+    if(QFile::exists(output_video))
+    {
+      if(!QFile::remove(output_video))
+      {
+        emit error_message(tr("Unable to remove output file: '%1'").arg(output_video));
+      }
+    }
+
+    if(m_subtitle_file.isOpen())
+    {
+      m_subtitle_file.close();
+      if(!m_subtitle_file.remove())
+      {
+        emit error_message(tr("Unable to remove output file: '%1'").arg(m_subtitle_file.fileName()));
+      }
+    }
+  }
+
   emit progress(100);
 }
 
@@ -280,9 +304,10 @@ bool Worker::init_libav()
   av_register_all();
   avfilter_register_all();
 
+  // Uncomment for testing.
   //av_log_set_callback(log_callback);
 
-  auto source_name = QString::fromStdWString(m_source_info.wstring());
+  const auto source_name = QString::fromStdWString(m_source_info.wstring());
   m_input_file.setFileName(source_name);
   if(!m_input_file.open(QIODevice::ReadOnly))
   {
@@ -368,8 +393,8 @@ bool Worker::init_libav()
     return false;
   }
 
-  av_find_best_stream(m_input_context, AVMEDIA_TYPE_AUDIO, m_audio_stream.id, -1, &m_audio_stream.decoder, 0);
 
+  av_find_best_stream(m_input_context, AVMEDIA_TYPE_AUDIO, m_audio_stream.id, -1, &m_audio_stream.decoder, 0);
   if(!m_audio_stream.decoder)
   {
     emit error_message(QString("Couldn't find audio decoder for '%1'.").arg(source_name));
@@ -473,6 +498,20 @@ bool Worker::init_libav()
       {
         emit error_message(tr("Unable to copy parameters to subtitle decoder context for '%1'. Error is \"%2\"").arg(source_name).arg(av_error_string(value)));
         return false;
+      }
+
+      long long int min_pts = std::numeric_limits<long long int>::max();
+      for(unsigned int i = 0; i < m_input_context->nb_streams; ++i)
+      {
+        const auto stream_start_pts = m_input_context->streams[i]->first_dts;
+        if(stream_start_pts == NO_PTS_VALUE) continue;
+
+        min_pts = std::min(min_pts, stream_start_pts);
+      }
+
+      if(min_pts != std::numeric_limits<long long int>::max())
+      {
+        m_subtitle_stream.start_dts = min_pts;
       }
     }
   }
@@ -588,25 +627,7 @@ bool Worker::needsAudioProcessing() const
 {
   if(m_audio_stream.id == AVERROR_STREAM_NOT_FOUND) return false;
 
-  auto stream = m_input_context->streams[m_audio_stream.id];
-  if(stream->codecpar->channels != m_configuration.audioChannelsNum())
-    return true;
-
-  switch(m_configuration.videoCodec())
-  {
-    case Utils::TranscoderConfiguration::VideoCodec::VP8:
-    case Utils::TranscoderConfiguration::VideoCodec::VP9:
-      return stream->codecpar->codec_id != AV_CODEC_ID_VORBIS;
-      break;
-    case Utils::TranscoderConfiguration::VideoCodec::H264:
-    case Utils::TranscoderConfiguration::VideoCodec::H265:
-      return stream->codecpar->codec_id != AV_CODEC_ID_AAC;
-      break;
-    default:
-      break;
-  }
-
-  return true;
+  return (m_input_context->streams[m_audio_stream.id]->codecpar->codec_id != audioCodecId());
 }
 
 //-----------------------------------------------------------------
@@ -684,24 +705,31 @@ bool Worker::create_output()
 
       m_video_stream.encoderContext = m_video_stream.stream->codec;
 
-      const auto inputStream = m_input_context->streams[m_video_stream.id];
-      m_video_stream.encoderContext->time_base           = inputStream->time_base;
-      m_video_stream.encoderContext->width               = inputStream->codecpar->width;
-      m_video_stream.encoderContext->height              = inputStream->codecpar->height;
-      m_video_stream.encoderContext->sample_aspect_ratio = inputStream->codecpar->sample_aspect_ratio;
-      m_video_stream.encoderContext->framerate           = inputStream->avg_frame_rate;
+      m_video_stream.encoderContext->time_base           = m_video_stream.decoderContext->time_base;
+      m_video_stream.encoderContext->width               = m_video_stream.decoderContext->width;
+      m_video_stream.encoderContext->height              = m_video_stream.decoderContext->height;
+      m_video_stream.encoderContext->sample_aspect_ratio = m_video_stream.decoderContext->sample_aspect_ratio;
+      m_video_stream.encoderContext->framerate           = m_video_stream.decoderContext->framerate;
       m_video_stream.encoderContext->pix_fmt             = m_video_stream.encoder->pix_fmts[0];
-      m_video_stream.encoderContext->bit_rate            = inputStream->codecpar->bit_rate * 0.9;
+      m_video_stream.encoderContext->bit_rate            = m_video_stream.decoderContext->bit_rate * 0.9;
       m_video_stream.encoderContext->refcounted_frames   = 0;
 
-      m_video_stream.stream->duration  = inputStream->duration;
-      m_video_stream.stream->time_base = inputStream->time_base;
+      const auto inputStream = m_input_context->streams[m_video_stream.id];
+      m_video_stream.stream->duration       = inputStream->duration;
       m_video_stream.stream->avg_frame_rate = inputStream->avg_frame_rate;
-      m_video_stream.time_base = inputStream->time_base;
+      m_video_stream.stream->first_dts      = inputStream->first_dts;
+      m_video_stream.stream->duration       = inputStream->duration;
+      m_video_stream.stream->time_base      = inputStream->time_base;
+      m_video_stream.time_base              = inputStream->time_base;
 
       if(m_video_stream.encoderContext->bit_rate == 0)
       {
         m_video_stream.encoderContext->bit_rate = 1500000;
+      }
+
+      if(inputStream->duration != NO_PTS_VALUE)
+      {
+        m_video_stream.stream->duration = av_rescale_q(inputStream->duration, inputStream->time_base, m_video_stream.time_base);
       }
 
       // some formats want stream headers to be separate
@@ -779,29 +807,26 @@ bool Worker::create_output()
       // some formats want stream headers to be separate
       if (format->flags & AVFMT_GLOBALHEADER) m_audio_stream.encoderContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
-      const auto inputStream = m_input_context->streams[m_audio_stream.id];
-
       m_audio_stream.encoderContext->sample_fmt         = m_audio_stream.encoder->sample_fmts[0];
-      m_audio_stream.encoderContext->sample_rate        = inputStream->codecpar->sample_rate;
-      m_audio_stream.encoderContext->channels           = std::min(m_configuration.audioChannelsNum(), inputStream->codecpar->channels);
+      m_audio_stream.encoderContext->sample_rate        = m_audio_stream.decoderContext->sample_rate;
+      m_audio_stream.encoderContext->channels           = std::min(m_configuration.audioChannelsNum(), m_audio_stream.decoderContext->channels);
       m_audio_stream.encoderContext->channel_layout     = av_get_default_channel_layout(m_audio_stream.encoderContext->channels);
-      m_audio_stream.encoderContext->bit_rate           = inputStream->codecpar->bit_rate;
+      m_audio_stream.encoderContext->bit_rate           = m_audio_stream.decoderContext->bit_rate;
       m_audio_stream.encoderContext->time_base          = AVRational{1,m_audio_stream.encoderContext->sample_rate};
 
       m_audio_stream.time_base = m_audio_stream.stream->time_base = m_audio_stream.encoderContext->time_base;
+
+      const auto inputStream = m_input_context->streams[m_audio_stream.id];
+      m_audio_stream.stream->duration = inputStream->duration;
 
       if(inputStream->duration != NO_PTS_VALUE)
       {
         m_audio_stream.stream->duration = av_rescale_q(inputStream->duration, inputStream->time_base, m_audio_stream.time_base);
       }
-      else
-      {
-        m_audio_stream.stream->duration = inputStream->duration;
-      }
 
       AVDictionary *dictionary = nullptr;
       av_dict_set(&dictionary, "threads", "auto", 0);
-      if(audioCodecId() == AV_CODEC_ID_AAC) av_dict_set(&dictionary, "strict", "experimental", 0);
+      av_dict_set(&dictionary, "strict", "experimental", 0);
 
       auto value = avcodec_open2(m_audio_stream.encoderContext, m_audio_stream.encoder, &dictionary);
       if(value < 0)
@@ -876,7 +901,7 @@ bool Worker::create_output()
       const auto filename = QString::fromStdWString(std_filename);
 
       m_subtitle_file.setFileName(filename);
-      if(!m_subtitle_file.open(QIODevice::WriteOnly))
+      if(!m_subtitle_file.open(QIODevice::WriteOnly|QIODevice::Unbuffered))
       {
         emit error_message(tr("Unable to create/open subtitle file: '%1'.").arg(filename));
         return false;
@@ -902,9 +927,6 @@ AVCodecID Worker::audioCodecId() const
   {
     case Utils::TranscoderConfiguration::AudioCodec::AAC:
       return AV_CODEC_ID_AAC;
-      break;
-    case Utils::TranscoderConfiguration::AudioCodec::MP3:
-      return AV_CODEC_ID_MP3;
       break;
     case Utils::TranscoderConfiguration::AudioCodec::VORBIS:
       return AV_CODEC_ID_VORBIS;
@@ -963,9 +985,10 @@ bool Worker::process_av_packet(Stream &stream)
 
   while(0 == (result = avcodec_receive_frame(stream.decoderContext, m_frame)))
   {
+    int value;
     if(stream.infilter == nullptr)
     {
-      auto value = avcodec_send_frame(stream.encoderContext, m_frame);
+      value = avcodec_send_frame(stream.encoderContext, m_frame);
       if(value < 0)
       {
         const auto filename = QString::fromStdWString(m_source_info.wstring());
@@ -975,13 +998,15 @@ bool Worker::process_av_packet(Stream &stream)
 
       continue;
     }
-
-    auto value = av_buffersrc_add_frame(stream.infilter, m_frame);
-    if(value < 0)
+    else
     {
-      const auto filename = QString::fromStdWString(m_source_info.wstring());
-      emit error_message(tr("Error sending frame to %1 buffer. Input file '%2'. Error: %3").arg(stream.name).arg(filename).arg(av_error_string(result)));
-      return false;
+      value = av_buffersrc_add_frame(stream.infilter, m_frame);
+      if(value < 0)
+      {
+        const auto filename = QString::fromStdWString(m_source_info.wstring());
+        emit error_message(tr("Error sending frame to %1 buffer. Input file '%2'. Error: %3").arg(stream.name).arg(filename).arg(av_error_string(result)));
+        return false;
+      }
     }
 
     while(true)
@@ -1012,19 +1037,19 @@ bool Worker::process_av_packet(Stream &stream)
         return false;
       }
 
+      if(!m_packet)
+      {
+        // we are flushing the encoders, but need a packet now.
+        m_packet = av_packet_alloc();
+        av_init_packet(m_packet);
+      }
+
       while(0 == (value = avcodec_receive_packet(stream.encoderContext, m_packet)))
       {
-        if(stream.id == m_audio_stream.id)
+        if(m_packet && stream.id == m_audio_stream.id)
         {
           m_packet->pts = m_packet->dts = stream.pts;
           m_packet->duration = m_audio_stream.encoderContext->frame_size;
-          stream.pts += m_packet->duration;
-        }
-
-        if(stream.id == m_video_stream.id)
-        {
-          m_packet->pts = m_packet->dts = stream.pts;
-          m_packet->duration = 1;
           stream.pts += m_packet->duration;
         }
 
@@ -1313,6 +1338,8 @@ bool Worker::write_av_packet(Stream &stream)
 {
   if(m_packet)
   {
+    m_packet->stream_index = stream.stream->index;
+
     const auto tb_codec = stream.time_base;
     const auto tb_stream = stream.stream->time_base;
 
@@ -1327,7 +1354,6 @@ bool Worker::write_av_packet(Stream &stream)
     }
 
     m_packet->duration = av_rescale_q(m_packet->duration, tb_codec, tb_stream);
-    m_packet->stream_index = stream.stream->index;
   }
 
   const auto value = av_interleaved_write_frame(stream.output_file, m_packet);
@@ -1344,11 +1370,11 @@ bool Worker::write_av_packet(Stream &stream)
 //-----------------------------------------------------------------------------
 bool Worker::write_srt_packet()
 {
-  if(m_packet)
+  if(m_packet && m_packet->size != 0)
   {
     auto write_to_file = [&](const QString &str)
     {
-      if(-1 == m_subtitle_file.write(str.toStdString().c_str()))
+      if(!m_subtitle_file.isOpen() || (-1 == m_subtitle_file.write(str.toStdString().c_str())))
       {
         emit error_message(tr("Unable to write to subtitle file '%1'. Error: %2").arg(m_subtitle_file.fileName()).arg(m_subtitle_file.errorString()));
         return false;
@@ -1360,15 +1386,16 @@ bool Worker::write_srt_packet()
     if(!write_to_file(QString::number(++m_subtitle_stream.pts))) return false;
     if(!write_to_file("\n")) return false;
 
-    const double mspos = 1000 * static_cast<double>(m_packet->pts * m_subtitle_stream.time_base.num ) / m_subtitle_stream.time_base.den;
+    const auto pts = (m_subtitle_stream.start_dts != 0) ? (m_packet->pts - m_subtitle_stream.start_dts) : m_packet->pts;
+    const double pos_msecs = 1000 * static_cast<double>(pts * m_subtitle_stream.time_base.num ) / m_subtitle_stream.time_base.den;
 
     QTime time{0,0,0,0};
-    time = time.addMSecs(static_cast<int>(mspos));
+    time = time.addMSecs(static_cast<int>(pos_msecs));
     if(!write_to_file(time.toString("hh:mm:ss,zzz"))) return false;
     if(!write_to_file(" --> ")) return false;
 
-    const double duration = 1000 * static_cast<double>(m_packet->duration * m_subtitle_stream.time_base.num ) / m_subtitle_stream.time_base.den;
-    time = time.addMSecs(static_cast<int>(duration));
+    const double duration_msecs = 1000 * static_cast<double>(m_packet->duration * m_subtitle_stream.time_base.num ) / m_subtitle_stream.time_base.den;
+    time = time.addMSecs(static_cast<int>(duration_msecs));
     if(!write_to_file(time.toString("hh:mm:ss,zzz"))) return false;
     if(!write_to_file("\n")) return false;
     if(!write_to_file(QString::fromLocal8Bit(reinterpret_cast<const char *>(m_packet->data), m_packet->size))) return false;

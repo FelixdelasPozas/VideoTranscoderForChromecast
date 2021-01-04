@@ -68,7 +68,7 @@ bool VideoTranscoder::event(QEvent* e)
 {
   if(e->type() == QEvent::KeyPress)
   {
-    auto ke = dynamic_cast<QKeyEvent *>(e);
+    const auto ke = dynamic_cast<QKeyEvent *>(e);
     if(ke && ke->key() == Qt::Key_Escape)
     {
       e->accept();
@@ -99,7 +99,7 @@ void VideoTranscoder::onStartButtonPressed()
 {
   const auto path = std::filesystem::path(m_directoryText->text().toStdWString());
 
-  auto files = Utils::findFiles(path, Utils::MOVIE_FILE_EXTENSIONS);
+  const auto files = Utils::findFiles(path, Utils::MOVIE_FILE_EXTENSIONS);
 
   if(!files.empty())
   {
@@ -134,7 +134,7 @@ void VideoTranscoder::connectUI()
 //--------------------------------------------------------------------
 void VideoTranscoder::onDirectoryButtonPressed()
 {
-  auto dir = Utils::validDirectoryCheck(std::filesystem::path(m_directoryText->text().toStdWString()));
+  const auto dir = Utils::validDirectoryCheck(std::filesystem::path(m_directoryText->text().toStdWString()));
   QFileDialog fileBrowser{this, tr("Select root directory"), QString::fromStdWString(dir.wstring())};
   fileBrowser.setFileMode(QFileDialog::Directory);
   fileBrowser.setOption(QFileDialog::DontUseNativeDialog, false);
@@ -144,7 +144,7 @@ void VideoTranscoder::onDirectoryButtonPressed()
 
   if(fileBrowser.exec() == QDialog::Accepted)
   {
-    auto newDirectory = QDir::toNativeSeparators(fileBrowser.selectedFiles().first());
+    const auto newDirectory = QDir::toNativeSeparators(fileBrowser.selectedFiles().first());
     QDir directory{newDirectory};
     if(directory.isReadable())
     {

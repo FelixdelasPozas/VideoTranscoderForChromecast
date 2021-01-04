@@ -40,32 +40,18 @@ ConfigurationDialog::ConfigurationDialog(Utils::TranscoderConfiguration& config,
   m_subtitleLanguage->setCurrentIndex(static_cast<int>(m_configuration.preferredSubtitleLanguage()));
   m_audioChannels->setValue(m_configuration.audioChannelsNum());
   m_themeCombo->setCurrentIndex(config.visualTheme().compare("Light") == 0 ? 0 : 1);
+  m_audioCodec->setEnabled(false);
 
   updateFormatComboBoxes();
 
   connect(m_videoCodec, SIGNAL(currentIndexChanged(int)), this, SLOT(updateFormatComboBoxes()));
   connect(m_themeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(changeTheme(int)));
-
-  switch(config.audioCodec())
-  {
-    case TranscoderConfiguration::AudioCodec::VORBIS:
-      break;
-    case TranscoderConfiguration::AudioCodec::MP3:
-      m_audioCodec->setCurrentIndex(0);
-      break;
-    case TranscoderConfiguration::AudioCodec::AAC:
-      m_audioCodec->setCurrentIndex(1);
-      break;
-    default:
-      Q_ASSERT(false);
-      break;
-  }
 }
 
 //--------------------------------------------------------------------
 void ConfigurationDialog::accept()
 {
-  auto videoIndex = m_videoCodec->currentIndex();
+  const auto videoIndex = m_videoCodec->currentIndex();
 
   m_configuration.setVideoCodec(static_cast<TranscoderConfiguration::VideoCodec>(videoIndex));
 
@@ -77,18 +63,7 @@ void ConfigurationDialog::accept()
       break;
     case 2:
     case 3:
-      switch(m_audioCodec->currentIndex())
-      {
-        case 0:
-          m_configuration.setAudioCodec(Utils::TranscoderConfiguration::AudioCodec::MP3);
-          break;
-        case 1:
-          m_configuration.setAudioCodec(Utils::TranscoderConfiguration::AudioCodec::AAC);
-          break;
-        default:
-          Q_ASSERT(false);
-          break;
-      }
+      m_configuration.setAudioCodec(Utils::TranscoderConfiguration::AudioCodec::AAC);
       break;
     default:
       Q_ASSERT(false);
@@ -107,7 +82,6 @@ void ConfigurationDialog::accept()
 //--------------------------------------------------------------------
 void ConfigurationDialog::updateFormatComboBoxes()
 {
-  auto audioIndex = m_audioCodec->currentIndex();
   m_audioCodec->clear();
 
   switch(m_videoCodec->currentIndex())
@@ -115,20 +89,10 @@ void ConfigurationDialog::updateFormatComboBoxes()
     case 0:
     case 1:
       m_audioCodec->insertItem(0, "Vorbis");
-      m_audioCodec->setEnabled(false);
       break;
     case 2:
     case 3:
-      m_audioCodec->insertItem(0, "MP3");
-      m_audioCodec->insertItem(1, "AAC");
-      if(audioIndex == 0) // changes between H.264 & H.265 shouldn't change audio index.
-      {
-        m_audioCodec->setEnabled(true);
-      }
-      else
-      {
-        m_audioCodec->setCurrentIndex(audioIndex);
-      }
+      m_audioCodec->insertItem(0, "AAC");
       break;
     default:
       Q_ASSERT(false);

@@ -32,7 +32,7 @@
 // libav
 #include <avversion.h>
 
-const QString AboutDialog::VERSION = QString("version 1.0.0");
+const QString AboutDialog::VERSION = QString("version 1.1.0");
 
 //-----------------------------------------------------------------
 AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
@@ -42,8 +42,8 @@ AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
 
   setWindowFlags(windowFlags() & ~(Qt::WindowContextHelpButtonHint) & ~(Qt::WindowMaximizeButtonHint) & ~(Qt::WindowMinimizeButtonHint));
 
-  auto compilation_date = QString(__DATE__);
-  auto compilation_time = QString("(") + QString(__TIME__) + QString(")");
+  const auto compilation_date = QString(__DATE__);
+  const auto compilation_time = QString("(") + QString(__TIME__) + QString(")");
 
   m_compilationDate->setText(tr("Compiled on %1 %2 build %3").arg(compilation_date).arg(compilation_time).arg(QString::number(BUILD_NUMBER)));
   m_version->setText(VERSION);
@@ -52,6 +52,6 @@ AboutDialog::AboutDialog(QWidget *parent, Qt::WindowFlags flags)
   m_libavVersion->setText(tr("version %1").arg(LIBAV_VERSION));
   m_libvpxVersion->setText(tr("version %1.%2.%3").arg(VERSION_MAJOR).arg(VERSION_MINOR).arg(VERSION_PATCH));
 
-  auto now = QDateTime::currentDateTime();
+  const auto now = QDateTime::currentDateTime();
   m_copyright->setText(tr("Copyright %1 Félix de las Pozas Álvarez").arg(now.date().year()));
 }

@@ -142,6 +142,7 @@ class Worker
       AVFilterContext *infilter;       /** input filter.                        */
       AVFilterContext *outfilter;      /** output filter.                       */
       long long        pts;            /** last pts muxed.                      */
+      long long        start_dts;      /** first dts.                           */
       AVRational       time_base;      /** stream time base.                    */
 
 
@@ -150,7 +151,7 @@ class Worker
        */
       Stream(): id{AVERROR_STREAM_NOT_FOUND}, decoder{nullptr}, decoderContext{nullptr}, encoder{nullptr},
                 encoderContext{nullptr}, stream{nullptr}, output_file{nullptr}, filter_graph{nullptr},
-                infilter{nullptr}, outfilter{nullptr}, pts{0}
+                infilter{nullptr}, outfilter{nullptr}, pts{0}, start_dts{0}
                 {};
     };
 

@@ -83,8 +83,8 @@ namespace Utils
   {
     public:
       enum class VideoCodec { VP8 = 0, VP9, H264, H265 };      /** video codec identifiers. */
-      enum class AudioCodec { VORBIS = 0, MP3, AAC };          /** audio codec identifiers. */
-      enum class Language   { DEFAULT = 0, ENGLISH, SPANISH }; /** language identifiers. */
+      enum class AudioCodec { VORBIS = 0, AAC };               /** audio codec identifiers. */
+      enum class Language   { DEFAULT = 0, ENGLISH, SPANISH }; /** language identifiers.    */
 
       /** \brief TranscoderConfiguration class constructor.
        *

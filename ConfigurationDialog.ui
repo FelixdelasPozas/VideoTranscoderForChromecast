@@ -97,11 +97,6 @@ QGroupBox::title {
           </item>
           <item>
            <property name="text">
-            <string>MP3</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
             <string>AAC</string>
            </property>
           </item>

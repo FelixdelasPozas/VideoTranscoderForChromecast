@@ -71,7 +71,7 @@ std::vector<std::filesystem::path> Utils::findFiles(const std::filesystem::path 
   {
     for(auto &name: std::filesystem::directory_iterator(initialDir))
     {
-      auto entry = name.path();
+      const auto entry = name.path();
       if(entry.filename() == "." || entry.filename() == "..") continue;
 
       if(with_subdirectories && std::filesystem::is_directory(entry))
@@ -277,8 +277,6 @@ bool Utils::TranscoderConfiguration::isValid() const
 {
   return (m_videoCodec == VideoCodec::VP8 && m_audioCodec == AudioCodec::VORBIS) ||
          (m_videoCodec == VideoCodec::VP9 && m_audioCodec == AudioCodec::VORBIS) ||
-         (m_videoCodec == VideoCodec::H264 && m_audioCodec == AudioCodec::MP3) ||
-         (m_videoCodec == VideoCodec::H265 && m_audioCodec == AudioCodec::MP3) ||
          (m_videoCodec == VideoCodec::H264 && m_audioCodec == AudioCodec::AAC) ||
          (m_videoCodec == VideoCodec::H265 && m_audioCodec == AudioCodec::AAC);
 }
@@ -345,7 +343,7 @@ bool Utils::toUCS2(const std::filesystem::path &filename)
     file.resize(0);
 
     contents.prepend(QChar::ByteOrderMark);
-    file.write(QByteArray::fromRawData(reinterpret_cast<const char*>(contents.constData()), (contents.size()+1)));
+    file.write(QByteArray::fromRawData(reinterpret_cast<const char*>(contents.constData()), contents.size()*2));
     file.flush();
     file.close();
   }

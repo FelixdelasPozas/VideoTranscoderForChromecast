@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 2.8.6)
 
 # Version Number
 set (VIDEO_TRANSCODER_VERSION_MAJOR 1)
-set (VIDEO_TRANSCODER_VERSION_MINOR 0)
+set (VIDEO_TRANSCODER_VERSION_MINOR 1)
 set (VIDEO_TRANSCODER_VERSION_PATCH 0)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -35,7 +35,8 @@ if(DEFINED MINGW)
   enable_language(RC)
 endif(DEFINED MINGW)
 
-# libav library needs to be compiled with nvenc (Nvidia encoder) and VPX (VP8 & VP9 encoders) support. Check libav compilation options.
+# libav library needs to be compiled with nvenc (Nvidia encoder) and VPX (VP8 & VP9 encoders) support and with non-free codecs.
+# Check libav compilation options.
 set(LIBAV_DIR "D:/Desarrollo/Bibliotecas/libav-12")
 set(LIBAV_INCLUDE_DIR ${LIBAV_DIR})
 set(LIBAV_LIBRARIES   ${LIBAV_DIR}/libavformat/libavformat.a 
