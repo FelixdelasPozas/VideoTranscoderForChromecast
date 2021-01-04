@@ -44,18 +44,18 @@ making it unredistributable. The source code releases can be downloaded from the
 # Screenshots
 Configuration dialog.
 
-![Configuration Dialog]()
+![Configuration Dialog](https://user-images.githubusercontent.com/12167134/103494167-aeee0600-4e35-11eb-8f26-7ec2970a4675.png)
 
 Simple main dialog.
 
-![Main dialog]()
+![Main dialog](https://user-images.githubusercontent.com/12167134/103494168-af869c80-4e35-11eb-8158-d0cac9c9c4cb.png)
 
 Dialog shown while processing files.
 
-![Process Dialog]()
+![Process Dialog](https://user-images.githubusercontent.com/12167134/103494169-af869c80-4e35-11eb-9dd7-7adf64bf9f59.png)
 
 # Repository information
-**Version**: 1.0.0
+**Version**: 1.1.0
 
 **Status**: finished
 
@@ -65,7 +65,7 @@ Dialog shown while processing files.
 
 | Language                     |files          |blank        |comment          |code  |
 |:-----------------------------|--------------:|------------:|----------------:|-----:|
-| C++                          |    7          |  417        |    245          |1833  |
+| C++                          |    7          |  416        |    245          |1828  |
 | C/C++ Header                 |    6          |  159        |    451          | 296  |
 | CMake                        |    2          |   26        |     22          |  93  |
-| **Total**                    |   **15**      |  **602**    |   **718**       |**2222**|
+| **Total**                    |   **15**      |  **601**    |   **718**       |**2217**|
