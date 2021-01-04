@@ -39,7 +39,7 @@ The following libraries are required:
 # Install
 There will never be any binary release of this program, as my libav is compiled with '--enable-nonfree' flag thus
 making it unredistributable. The source code releases can be downloaded from the
-![releases page](https://github.com/FelixdelasPozas/TranscoderForChromecast/releases).
+![releases page](https://github.com/FelixdelasPozas/VideoTranscoderForChromecast/releases/).
 
 # Screenshots
 Configuration dialog.
