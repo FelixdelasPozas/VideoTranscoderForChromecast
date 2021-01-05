@@ -42,9 +42,6 @@ extern "C"
 #include <libavutil/opt.h>
 }
 
-const QList<int> Worker::VALID_VIDEO_CODECS = { AV_CODEC_ID_VP8, AV_CODEC_ID_VP9, AV_CODEC_ID_H264, AV_CODEC_ID_HEVC };
-const QList<int> Worker::VALID_AUDIO_CODECS = { AV_CODEC_ID_MP3, AV_CODEC_ID_AAC, AV_CODEC_ID_VORBIS };
-
 const std::wstring SUBTITLE_EXTENSION = L".srt";
 const std::wstring VIDEO_EXTENSION    = L".mkv";
 
@@ -91,14 +88,14 @@ void Worker::run()
     {
       if(create_output())
       {
-        const bool transcodeAudio     = m_audio_stream.encoder != nullptr;
-        const bool transcodeVideo     = m_video_stream.encoder != nullptr;
-        const bool transcodeSubtitles = m_subtitle_file.isOpen();
+        const bool transcodeAudio   = m_audio_stream.encoder != nullptr;
+        const bool transcodeVideo   = m_video_stream.encoder != nullptr;
+        const bool extractSubtitles = m_subtitle_file.isOpen();
 
         QStringList processingStrings;
-        if(transcodeAudio)     processingStrings.push_back(tr("audio"));
-        if(transcodeVideo)     processingStrings.push_back(tr("video"));
-        if(transcodeSubtitles) processingStrings.push_back(tr("subtitles"));
+        if(transcodeAudio)   processingStrings.push_back(tr("audio"));
+        if(transcodeVideo)   processingStrings.push_back(tr("video"));
+        if(extractSubtitles) processingStrings.push_back(tr("extracting subtitles"));
 
         QString processingText;
         switch(processingStrings.size())
@@ -117,8 +114,10 @@ void Worker::run()
             break;
         }
 
+        if(transcodeAudio || transcodeVideo) processingText = "transcoding " + processingText;
+
         const auto filename = QString::fromStdString(m_source_info.stem().string());
-        const auto message = tr("Transcoding '%1': %2").arg(filename).arg(processingText);
+        const auto message = tr("Processing '%1': %2").arg(filename).arg(processingText);
         emit information_message(message);
 
         int value = 0;
@@ -174,7 +173,7 @@ void Worker::run()
             }
           }
 
-          if(transcodeSubtitles && m_packet->stream_index == m_subtitle_stream.id)
+          if(extractSubtitles && m_packet->stream_index == m_subtitle_stream.id)
           {
             write_srt_packet();
           }
@@ -212,6 +211,7 @@ void Worker::run()
 
   if(m_stop)
   {
+    // If cancelled remove output files.
     QStringList files;
 
     const auto output_video = QString::fromStdWString(m_source_info.wstring() + VIDEO_EXTENSION);
@@ -266,7 +266,7 @@ bool Worker::check_output_file_permissions()
 
   if(needsSubtitleProcessing())
   {
-    files << QString::fromStdWString(m_source_info.parent_path().wstring() + L"/" + m_source_info.stem().wstring() + SUBTITLE_EXTENSION);
+    files << QString::fromStdWString(m_source_info.wstring() + SUBTITLE_EXTENSION);
   }
 
   for(const auto filename: files)
@@ -304,7 +304,7 @@ bool Worker::init_libav()
   av_register_all();
   avfilter_register_all();
 
-  // Uncomment for testing.
+  // Uncomment next when testing.
   //av_log_set_callback(log_callback);
 
   const auto source_name = QString::fromStdWString(m_source_info.wstring());
@@ -867,7 +867,7 @@ bool Worker::create_output()
       m_audio_stream.stream->duration = m_input_context->streams[m_audio_stream.id]->duration;
     }
 
-    /* open the output file, if needed */
+    // open the output file, if needed.
     if (!(format->flags & AVFMT_NOFILE))
     {
       const auto value = avio_open(&m_output_context->pb, filename.toStdString().c_str(), AVIO_FLAG_WRITE);
@@ -897,8 +897,7 @@ bool Worker::create_output()
     }
     else
     {
-      const std::wstring std_filename = m_source_info.parent_path().wstring() + L"/" + m_source_info.stem().wstring() + SUBTITLE_EXTENSION;
-      const auto filename = QString::fromStdWString(std_filename);
+      const auto filename = QString::fromStdWString(m_source_info.wstring() + SUBTITLE_EXTENSION);
 
       m_subtitle_file.setFileName(filename);
       if(!m_subtitle_file.open(QIODevice::WriteOnly|QIODevice::Unbuffered))
@@ -1080,7 +1079,7 @@ bool Worker::init_audio_filters()
 {
   const auto filename = QString::fromStdString(m_source_info.stem().string());
 
-  /* Create a new filtergraph, which will contain all the filters. */
+  // Create a new filter graph, which will contain all the filters.
   m_audio_stream.filter_graph = avfilter_graph_alloc();
   if (!m_audio_stream.filter_graph)
   {
@@ -1088,7 +1087,7 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* Create the abuffer filter used for feeding the data into the graph. */
+  // Create the abuffer filter used for feeding the data into the graph.
   auto abuffer = avfilter_get_by_name("abuffer");
   if (!abuffer)
   {
@@ -1112,7 +1111,7 @@ bool Worker::init_audio_filters()
       .arg(m_audio_stream.decoderContext->sample_rate)
       .arg(QString::fromLatin1(buffer));
 
-  /* Now initialize the filter. */
+  // Now initialize the filter.
   auto value = avfilter_init_str(m_audio_stream.infilter, bufferParams.toStdString().c_str());
   if (value < 0)
   {
@@ -1120,7 +1119,7 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* Create the aformat filter it ensures that the output is of the format we want. */
+  // Create the aformat filter it ensures that the output is of the format we want.
   auto aformat = avfilter_get_by_name("aformat");
   if (!aformat)
   {
@@ -1147,7 +1146,7 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* Finally create the abuffersink filter used to get the filtered data out of the graph. */
+  // Finally create the abuffersink filter used to get the filtered data out of the graph.
   auto abuffersink = avfilter_get_by_name("abuffersink");
   if (!abuffersink)
   {
@@ -1162,7 +1161,7 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* This filter takes no options. */
+  // This filter takes no options.
   value = avfilter_init_str(m_audio_stream.outfilter, nullptr);
   if (value < 0)
   {
@@ -1170,8 +1169,8 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* Connect the filters;
-   * in this simple case the filters just form a linear chain. */
+  // Connect the filters;
+  // in this simple case the filters just form a linear chain.
   value = avfilter_link(m_audio_stream.infilter, 0, aformat_ctx, 0);
   if (value >= 0)
     value = avfilter_link(aformat_ctx, 0, m_audio_stream.outfilter, 0);
@@ -1181,7 +1180,7 @@ bool Worker::init_audio_filters()
     return false;
   }
 
-  /* Configure the graph. */
+  // Configure the graph.
   value = avfilter_graph_config(m_audio_stream.filter_graph, nullptr);
   if (value < 0)
   {
@@ -1198,7 +1197,7 @@ bool Worker::init_video_filters()
 {
   const auto filename = QString::fromStdString(m_source_info.stem().string());
 
-  /* Create a new filtergraph, which will contain all the filters. */
+  // Create a new filter graph, which will contain all the filters.
   m_video_stream.filter_graph = avfilter_graph_alloc();
   if (!m_video_stream.filter_graph)
   {
@@ -1206,7 +1205,7 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* Create the abuffer filter used for feeding the data into the graph. */
+  // Create the buffer filter used for feeding the data into the graph.
   auto buffer = avfilter_get_by_name("buffer");
   if (!buffer)
   {
@@ -1226,7 +1225,7 @@ bool Worker::init_video_filters()
       .arg(QString::fromLatin1(av_get_pix_fmt_name(m_video_stream.decoderContext->pix_fmt)))
       .arg(m_video_stream.decoderContext->time_base.num).arg(m_video_stream.decoderContext->time_base.den);
 
-  /* Now initialize the filter. */
+  // Now initialize the filter.
   auto value = avfilter_init_str(m_video_stream.infilter, bufferParams.toStdString().c_str());
   if (value < 0)
   {
@@ -1234,7 +1233,7 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* Create the format filter it ensures that the output is of the format we want. */
+  // Create the format filter it ensures that the output is of the format we want.
   auto format = avfilter_get_by_name("format");
   if (!format)
   {
@@ -1259,7 +1258,7 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* Finally create the buffersink filter used to get the filtered data out of the graph. */
+  // Finally create the buffersink filter used to get the filtered data out of the graph.
   auto buffersink = avfilter_get_by_name("buffersink");
   if (!buffersink)
   {
@@ -1274,7 +1273,7 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* This filter takes no options. */
+  // This filter takes no options.
   value = avfilter_init_str(m_video_stream.outfilter, nullptr);
   if (value < 0)
   {
@@ -1282,8 +1281,8 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* Connect the filters;
-   * in this simple case the filters just form a linear chain. */
+  // Connect the filters;
+  // in this simple case the filters just form a linear chain.
   value = avfilter_link(m_video_stream.infilter, 0, format_ctx, 0);
   if (value >= 0)
       value = avfilter_link(format_ctx, 0, m_video_stream.outfilter, 0);
@@ -1293,7 +1292,7 @@ bool Worker::init_video_filters()
     return false;
   }
 
-  /* Configure the graph. */
+  // Configure the graph.
   value = avfilter_graph_config(m_video_stream.filter_graph, nullptr);
   if (value < 0)
   {

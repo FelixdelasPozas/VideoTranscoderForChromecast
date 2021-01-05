@@ -169,9 +169,6 @@ class Worker
 
     static const int s_io_buffer_size = 16384 + AV_INPUT_BUFFER_PADDING_SIZE;
 
-    static const QList<int> VALID_VIDEO_CODECS; /** Valid video codecs for a Chromecast valid video. */
-    static const QList<int> VALID_AUDIO_CODECS; /** Valid audio codecs for a Chromecast valid audio. */
-
     /** \brief Returns true if the input file can be read and false otherwise.
      *
      */
