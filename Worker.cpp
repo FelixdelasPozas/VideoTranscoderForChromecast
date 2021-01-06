@@ -667,7 +667,7 @@ bool Worker::create_output()
     }
 
     m_output_context->oformat = format;
-    m_output_context->oformat->flags |= AVFMT_VARIABLE_FPS;
+    m_output_context->oformat->flags |= AVFMT_VARIABLE_FPS|AVFMT_TS_DISCONT;
     m_output_context->subtitle_codec_id = AV_CODEC_ID_NONE;
     strcpy(m_output_context->filename, filename.toStdString().c_str());
 
@@ -1339,19 +1339,24 @@ bool Worker::write_av_packet(Stream &stream)
   {
     m_packet->stream_index = stream.stream->index;
 
-    const auto tb_codec = stream.time_base;
-    const auto tb_stream = stream.stream->time_base;
-
-    if(m_packet->pts != NO_PTS_VALUE)
-    {
-      m_packet->pts = av_rescale_q(m_packet->pts, tb_codec, tb_stream);
-    }
-
     if(m_packet->dts != NO_PTS_VALUE)
     {
-      m_packet->dts = av_rescale_q(m_packet->dts, tb_codec, tb_stream);
+      stream.dts = m_packet->pts;
+    }
+    else
+    {
+      m_packet->dts = stream.dts;
     }
 
+    if(m_packet->pts == NO_PTS_VALUE)
+    {
+      m_packet->pts = m_packet->dts;
+    }
+
+    const auto tb_codec = stream.time_base;
+    const auto tb_stream = stream.stream->time_base;
+    m_packet->pts = av_rescale_q(m_packet->pts, tb_codec, tb_stream);
+    m_packet->dts = av_rescale_q(m_packet->dts, tb_codec, tb_stream);
     m_packet->duration = av_rescale_q(m_packet->duration, tb_codec, tb_stream);
   }
 
