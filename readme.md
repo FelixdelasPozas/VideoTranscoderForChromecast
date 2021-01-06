@@ -48,7 +48,7 @@ Configuration dialog.
 
 Simple main dialog.
 
-![Main dialog](https://user-images.githubusercontent.com/12167134/103494168-af869c80-4e35-11eb-8158-d0cac9c9c4cb.png)
+![Main dialog](https://user-images.githubusercontent.com/12167134/103810436-88111900-505b-11eb-88bf-642da3d46778.png)
 
 Dialog shown while processing files.
 
