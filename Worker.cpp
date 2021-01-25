@@ -42,6 +42,8 @@ extern "C"
 #include <libavutil/opt.h>
 }
 
+#include <iostream>
+
 const std::wstring SUBTITLE_EXTENSION = L".srt";
 const std::wstring VIDEO_EXTENSION    = L".mkv";
 
@@ -627,7 +629,10 @@ bool Worker::needsAudioProcessing() const
 {
   if(m_audio_stream.id == AVERROR_STREAM_NOT_FOUND) return false;
 
-  return (m_input_context->streams[m_audio_stream.id]->codecpar->codec_id != audioCodecId());
+  const auto inputStream = m_input_context->streams[m_audio_stream.id];
+
+  return (inputStream->codecpar->codec_id != audioCodecId()) ||
+         (inputStream->codecpar->channels != m_configuration.audioChannelsNum());
 }
 
 //-----------------------------------------------------------------
@@ -978,7 +983,7 @@ bool Worker::process_av_packet(Stream &stream)
   else if(result < 0)
   {
     const auto filename = QString::fromStdWString(m_source_info.wstring());
-    emit error_message(tr("Error sending packet to %1 decoder. Input file '%2'. Error: %3").arg(stream.name).arg(filename).arg(av_error_string(result)));
+    emit error_message(tr("Error sending packet to %1 decoder. Input file '%2'. Error: %3 (%4)").arg(stream.name).arg(filename).arg(av_error_string(result)).arg(result));
     return false;
   }
 
@@ -991,7 +996,7 @@ bool Worker::process_av_packet(Stream &stream)
       if(value < 0)
       {
         const auto filename = QString::fromStdWString(m_source_info.wstring());
-        emit error_message(tr("Error sending frame to %1 encoder. Input file '%2'. Error: %3").arg(stream.name).arg(filename).arg(av_error_string(result)));
+        emit error_message(tr("Error sending frame to %1 encoder. Input file '%2'. Error: %3 (%4)").arg(stream.name).arg(filename).arg(av_error_string(value)).arg(value));
         return false;
       }
 
@@ -1003,7 +1008,7 @@ bool Worker::process_av_packet(Stream &stream)
       if(value < 0)
       {
         const auto filename = QString::fromStdWString(m_source_info.wstring());
-        emit error_message(tr("Error sending frame to %1 buffer. Input file '%2'. Error: %3").arg(stream.name).arg(filename).arg(av_error_string(result)));
+        emit error_message(tr("Error sending frame to %1 buffer. Input file '%2'. Error: %3 (%4)").arg(stream.name).arg(filename).arg(av_error_string(value)).arg(value));
         return false;
       }
     }
@@ -1103,7 +1108,7 @@ bool Worker::init_audio_filters()
   }
 
   char buffer[256];
-  av_get_channel_layout_string(buffer, sizeof(buffer), m_audio_stream.decoderContext->channels, av_get_default_channel_layout(m_audio_stream.decoderContext->channels));
+  av_get_channel_layout_string(buffer, sizeof(buffer), m_audio_stream.decoderContext->channels, m_audio_stream.decoderContext->channel_layout);
 
   QString bufferParams = tr("sample_fmt=%1:time_base=%2/%3:sample_rate=%4:channel_layout=%5")
       .arg(QString::fromLatin1(av_get_sample_fmt_name(m_audio_stream.decoderContext->sample_fmt)))
@@ -1117,6 +1122,13 @@ bool Worker::init_audio_filters()
   {
     emit error_message(tr("Unable to initialize audio filter buffer context for file '%1'.").arg(filename));
     return false;
+  }
+
+  // Fix for bad parsing of channel layout.
+  BufferSourceContext *s = reinterpret_cast<BufferSourceContext *>(m_audio_stream.infilter->priv);
+  if(s->channel_layout != m_audio_stream.decoderContext->channel_layout)
+  {
+    s->channel_layout = m_audio_stream.decoderContext->channel_layout;
   }
 
   // Create the aformat filter it ensures that the output is of the format we want.
@@ -1133,6 +1145,9 @@ bool Worker::init_audio_filters()
     emit error_message(tr("Unable to allocate audio filter format context for file '%1'.").arg(filename));
     return false;
   }
+
+  memset(buffer, 0, 255);
+  av_get_channel_layout_string(buffer, sizeof(buffer), m_audio_stream.encoderContext->channels, av_get_default_channel_layout(m_audio_stream.encoderContext->channels));
 
   QString formatParams = tr("sample_fmts=%1:sample_rates=%2:channel_layouts=%3")
       .arg(QString::fromLatin1(av_get_sample_fmt_name(m_audio_stream.encoderContext->sample_fmt)))

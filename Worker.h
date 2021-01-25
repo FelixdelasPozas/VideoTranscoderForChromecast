@@ -34,6 +34,7 @@ extern "C"
 #include <libavformat/avio.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/fifo.h>
+#include <libavutil/log.h>
 #include <libavresample/avresample.h>
 #include <libavfilter/avfilter.h>
 }
@@ -276,5 +277,34 @@ class Worker
 
 extern int hwaccel_lax_profile_check;
 extern AVBufferRef *hw_device_ctx;
+
+/** \struct BufferSourceContext
+ * \brief Needed to fix a bad parse in abuffer in init_audio_filters(). Directly from libav source.
+ *
+ */
+typedef struct BufferSourceContext {
+    const AVClass    *classA;
+    AVFifoBuffer     *fifo;
+    AVRational        time_base;     ///< time_base to set in the output link
+    AVRational        frame_rate;    ///< frame_rate to set in the output link
+
+    /* video only */
+    int               h, w;
+    enum AVPixelFormat  pix_fmt;
+    char               *pix_fmt_str;
+    AVRational        pixel_aspect;
+
+    AVBufferRef *hw_frames_ctx;
+
+    /* audio only */
+    int sample_rate;
+    enum AVSampleFormat sample_fmt;
+    char               *sample_fmt_str;
+    uint64_t channel_layout;
+    char    *channel_layout_str;
+
+    int got_format_from_params;
+    int eof;
+} BufferSourceContext;
 
 #endif // WORKER_H_

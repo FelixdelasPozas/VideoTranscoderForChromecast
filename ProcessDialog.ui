@@ -47,7 +47,14 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QTextEdit" name="m_log"/>
+       <widget class="QTextEdit" name="m_log">
+        <property name="undoRedoEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
