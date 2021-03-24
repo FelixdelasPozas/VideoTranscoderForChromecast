@@ -1108,16 +1108,26 @@ bool Worker::init_audio_filters()
   }
 
   char buffer[256];
-  av_get_channel_layout_string(buffer, sizeof(buffer), m_audio_stream.decoderContext->channels, m_audio_stream.decoderContext->channel_layout);
+  uint64_t selectedLayout = 0;
+  int value = 0;
+  for(auto cLayout: {m_audio_stream.decoderContext->channel_layout, av_get_default_channel_layout(m_audio_stream.decoderContext->channels)})
+  {
+    av_get_channel_layout_string(buffer, sizeof(buffer), m_audio_stream.decoderContext->channels, cLayout);
 
-  QString bufferParams = tr("sample_fmt=%1:time_base=%2/%3:sample_rate=%4:channel_layout=%5")
-      .arg(QString::fromLatin1(av_get_sample_fmt_name(m_audio_stream.decoderContext->sample_fmt)))
-      .arg(m_audio_stream.decoderContext->time_base.num).arg(m_audio_stream.decoderContext->time_base.den)
-      .arg(m_audio_stream.decoderContext->sample_rate)
-      .arg(QString::fromLatin1(buffer));
+    QString bufferParams = tr("sample_fmt=%1:time_base=%2/%3:sample_rate=%4:channel_layout=%5")
+        .arg(QString::fromLatin1(av_get_sample_fmt_name(m_audio_stream.decoderContext->sample_fmt)))
+        .arg(m_audio_stream.decoderContext->time_base.num).arg(m_audio_stream.decoderContext->time_base.den)
+        .arg(m_audio_stream.decoderContext->sample_rate)
+        .arg(QString::fromLatin1(buffer));
 
-  // Now initialize the filter.
-  auto value = avfilter_init_str(m_audio_stream.infilter, bufferParams.toStdString().c_str());
+    // Now initialize the filter.
+    value = avfilter_init_str(m_audio_stream.infilter, bufferParams.toStdString().c_str());
+    if (value < 0) continue;
+
+    selectedLayout = cLayout;
+    break;
+  }
+
   if (value < 0)
   {
     emit error_message(tr("Unable to initialize audio filter buffer context for file '%1'.").arg(filename));
@@ -1126,9 +1136,9 @@ bool Worker::init_audio_filters()
 
   // Fix for bad parsing of channel layout.
   BufferSourceContext *s = reinterpret_cast<BufferSourceContext *>(m_audio_stream.infilter->priv);
-  if(s->channel_layout != m_audio_stream.decoderContext->channel_layout)
+  if(s->channel_layout != selectedLayout)
   {
-    s->channel_layout = m_audio_stream.decoderContext->channel_layout;
+    s->channel_layout = selectedLayout;
   }
 
   // Create the aformat filter it ensures that the output is of the format we want.
@@ -1354,25 +1364,33 @@ bool Worker::write_av_packet(Stream &stream)
   {
     m_packet->stream_index = stream.stream->index;
 
-    if(m_packet->dts != NO_PTS_VALUE)
+    if(stream.stream->index != m_video_stream.id)
     {
-      stream.dts = m_packet->pts;
+      if(m_packet->dts != NO_PTS_VALUE)
+      {
+        stream.dts = m_packet->pts;
+      }
+      else
+      {
+        m_packet->dts = stream.dts;
+      }
+
+      if(m_packet->pts == NO_PTS_VALUE)
+      {
+        m_packet->pts = m_packet->dts;
+      }
     }
     else
     {
-      m_packet->dts = stream.dts;
-    }
-
-    if(m_packet->pts == NO_PTS_VALUE)
-    {
-      m_packet->pts = m_packet->dts;
+      m_packet->dts = m_packet->pts = stream.dts++;
+      m_packet->duration = 1;
     }
 
     const auto tb_codec = stream.time_base;
     const auto tb_stream = stream.stream->time_base;
-    m_packet->pts = av_rescale_q(m_packet->pts, tb_codec, tb_stream);
-    m_packet->dts = av_rescale_q(m_packet->dts, tb_codec, tb_stream);
-    m_packet->duration = av_rescale_q(m_packet->duration, tb_codec, tb_stream);
+    m_packet->pts = av_rescale_q_rnd(m_packet->pts, tb_codec, tb_stream, AV_ROUND_NEAR_INF);
+    m_packet->dts = av_rescale_q_rnd(m_packet->dts, tb_codec, tb_stream, AV_ROUND_NEAR_INF);
+    if(m_packet->duration != 0) m_packet->duration = av_rescale_q(m_packet->duration, tb_codec, tb_stream);
   }
 
   const auto value = av_interleaved_write_frame(stream.output_file, m_packet);

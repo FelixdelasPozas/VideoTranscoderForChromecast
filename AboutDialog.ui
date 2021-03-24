@@ -129,7 +129,7 @@
             </font>
            </property>
            <property name="text">
-            <string>&lt;a href=https://github.com/FelixdelasPozas/transcoderForChromecast&gt;Homepage&lt;/a&gt;</string>
+            <string>&lt;a href=https://github.com/FelixdelasPozas/VideoTranscoderForChromecast&gt;Homepage&lt;/a&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
